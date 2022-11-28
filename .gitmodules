@@ -1,0 +1,4 @@
+[submodule "deep_lda"]
+	path = deep_lda
+	url = ./deep_lda
+	ignore = untracked
