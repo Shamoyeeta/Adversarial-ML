@@ -15,14 +15,16 @@ For installing Theano and Lasagne please follow the installation instruction on 
 You will also need: matplotlib, numpy and scipy
 
 
+Training
+------------
 For training the models just run the following commands:
 
-MNIST: the model should train up to a validation accuracy of around 99.7%.::
+The MNIST model should train up to a validation accuracy of around 99.7%.::
 
     python exp_dlda.py --model mnist_dlda --data mnist --train
 
 
-For evaluating the trained models run the following commands.
+For evaluating the trained models run the following commands.::
     
     python exp_dlda.py --model mnist_dlda --data mnist --eval
     
@@ -32,7 +34,10 @@ The script will report:
 * Report the magnitudes of the individual eigenvalues after solving the general (Deep)LDA eigenvalue problem
 * Produce some plots visualizing the structure of the latent representation produced by the model 
 
-For checking accuracy of the trained model on adversarial example (saved on a local file images.pkl at same level as exp_dlda) run:
+
+Checking Accuracy
+------------
+For checking accuracy of the trained model on adversarial example (saved on a local file images.pkl at same level as exp_dlda) run.::
     
     python exp_dlda.py --model mnist_dlda --data mnist --predict images.pkl
 
