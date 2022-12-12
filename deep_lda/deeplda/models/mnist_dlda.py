@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+
 import numpy as np
 
 import theano
@@ -8,13 +12,13 @@ from theano.tensor import slinalg
 
 import lasagne
 from lasagne.layers.normalization import batch_norm
+
 try:
     from lasagne.layers.dnn import Conv2DDNNLayer as Conv2DLayer
 except:
     from lasagne.layers.conv import Conv2DLayer as Conv2DLayer
 
 from .batch_iterators import BatchIterator
-
 
 EXP_NAME = 'mnist_dlda'
 INI_LEARNING_RATE = 0.1
@@ -35,6 +39,66 @@ init_conv = lasagne.init.HeNormal
 
 
 def build_model(batch_size=BATCH_SIZE):
+    """
+    Compile net architecture
+
+    :param batch_size: batch size used for training the model
+    :return:
+        l_out: out-layer of network
+        l_in: in-layer of network
+    """
+    # ---input layer ---
+    l_in = keras.Input(shape=(1, 28, 28), batch_size=batch_size)
+    print(l_in.shape)
+
+    # ---conv layer ---
+    net = tf.keras.layers.Conv2D(filters=64, kernel_size=3, activation='relu',
+                                 kernel_initializer=tf.keras.initializers.he_normal(),
+                                 data_format='channels_first')(l_in)
+    net = tf.keras.layers.BatchNormalization()(net)
+    net = tf.keras.layers.Conv2D(filters=64, kernel_size=3, activation='relu',
+                                 kernel_initializer=tf.keras.initializers.he_normal(),
+                                 data_format='channels_first')(net)
+    net = tf.keras.layers.BatchNormalization()(net)
+    net = tf.keras.layers.MaxPool2D()(net)
+    net = tf.keras.layers.Dropout(rate=0.25)(net)
+
+    net = tf.keras.layers.Conv2D(filters=96, kernel_size=3, activation='relu',
+                                 kernel_initializer=tf.keras.initializers.he_normal(),
+                                 data_format='channels_first')(net)
+    net = tf.keras.layers.BatchNormalization()(net)
+    net = tf.keras.layers.Conv2D(filters=96, kernel_size=3, activation='relu',
+                                 kernel_initializer=tf.keras.initializers.he_normal(),
+                                 data_format='channels_first')(net)
+    net = tf.keras.layers.BatchNormalization()(net)
+    net = tf.keras.layers.MaxPool2D()(net)
+    net = tf.keras.layers.Dropout(rate=0.25)(net)
+
+    net = tf.keras.layers.Conv2D(filters=256, kernel_size=3, activation='relu',
+                                 kernel_initializer=tf.keras.initializers.he_normal(),
+                                 data_format='channels_first')(net)
+    net = tf.keras.layers.BatchNormalization()(net)
+    net = tf.keras.layers.Dropout(rate=0.5)(net)
+    net = tf.keras.layers.Conv2D(filters=256, kernel_size=2, activation='relu',
+                                 kernel_initializer=tf.keras.initializers.he_normal(),
+                                 data_format='channels_first')(net)
+    net = tf.keras.layers.BatchNormalization()(net)
+    net = tf.keras.layers.Dropout(rate=0.5)(net)
+
+    net = tf.keras.layers.Conv2D(filters=10, kernel_size=1, activation='relu',
+                                 kernel_initializer=tf.keras.initializers.he_normal(),
+                                 data_format='channels_first')(net)
+    net = tf.keras.layers.BatchNormalization()(net)
+    net = tf.keras.layers.GlobalAveragePooling2D(data_format='channels_first')(net)
+    l_out = tf.keras.layers.Flatten(data_format='channels_first')(net)
+
+    model = tf.keras.Model(l_in, l_out)
+    print(model.summary())
+
+    return l_out, l_in
+
+
+def build_model_theano(batch_size=BATCH_SIZE):
     """
     Compile net architecture
 
@@ -86,6 +150,20 @@ def build_model(batch_size=BATCH_SIZE):
     return l_out, l_in
 
 
+def objective_tf(Xt, yt):
+    """
+        DeepLDA optimization target
+        """
+
+    # init groups
+    groups = np.arange(0, n_classes)
+
+    def compute_cov(group, Xt, yt):
+        """
+        Compute class covariance matrix for group
+        """
+
+
 def objective(Xt, yt):
     """
     DeepLDA optimization target
@@ -134,6 +212,11 @@ def objective(Xt, yt):
     costs = -T.mean(top_k_evals)
 
     return costs
+
+
+def compute_updates_tf(all_grads, all_params, learning_rate):
+    """ Compute updates from gradients """
+    return tf.keras.optimizers.SGD(learning_rate=learning_rate, nesterov='true', momentum=0.09)
 
 
 def compute_updates(all_grads, all_params, learning_rate):

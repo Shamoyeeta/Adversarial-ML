@@ -82,7 +82,7 @@ if __name__ == '__main__':
         va_batch_iter = model.valid_batch_iterator()
         l_out, va_loss = fit(l_out, l_in, data, model.objective, model.Y_TENSOR_TYPE,
                              train_batch_iter=tr_batch_iter, valid_batch_iter=va_batch_iter,
-                             r=model.r, num_epochs=100, patience=model.PATIENCE,
+                             r=model.r, num_epochs=2, patience=model.PATIENCE,
                              learn_rate=model.INI_LEARNING_RATE, update_learning_rate=model.update_learning_rate,
                              l_2=model.L2, compute_updates=model.compute_updates,
                              exp_name=model.EXP_NAME, out_path=exp_root, dump_file=dump_file)
