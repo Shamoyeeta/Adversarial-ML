@@ -22,7 +22,7 @@ if __name__ == '__main__':
 
     # the parameters for training the network
     epoch_num = 2
-    batch_size = 800
+    batch_size = 1000
 
     # the regularization parameter of the network
     reg_par = 1e-5
@@ -48,14 +48,16 @@ if __name__ == '__main__':
     x_test = x_test.astype('float32') / 255
 
     # Building, training, and producing the new features by Deep LDA
-    model = create_model(x_train.shape[-1], reg_par, outdim_size)
+    model = create_model(batch_size=batch_size)
 
     model_optimizer = Adam()
     model.compile(loss=lda_loss(n_components, margin), optimizer=model_optimizer)
 
     model.summary()
 
-    model.fit(x_train, y_train, batch_size=batch_size, epochs=epoch_num, shuffle=True, validation_data=(x_test, y_test), verbose=2)
+    history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epoch_num, shuffle=True, validation_split=0.2, verbose=2)
+
+    print('History- ', history.history)
 
     x_train_new = model.predict(x_train)
     x_test_new = model.predict(x_test)

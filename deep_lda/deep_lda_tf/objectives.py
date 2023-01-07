@@ -157,7 +157,7 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
     X = tf.convert_to_tensor(X, tf.float32)                                             # [N, d]
     y = tf.squeeze(tf.cast(tf.convert_to_tensor(y), tf.int32))                          # [N]
     y.set_shape(X.shape[:-1])                                                           # [N]
-    classes = tf.sort(tf.unique(y).y)
+    classes = tf.sort(tf.raw_ops.UniqueV2(x=y, axis=[0]).y)
     num_classes = tf.shape(classes)[0]
 
     def compute_cov(args):
@@ -167,15 +167,17 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
         Xg_bar = Xg - tf.reduce_mean(Xg, axis=0, keepdims=True)                         # [None, d]
         m = tf.cast(tf.shape(Xg_bar)[0], tf.float32)                                    # []
         Xg_bar_dummy_batch = tf.expand_dims(Xg_bar, axis=0)                             # [1, None, d]
-        return (1. / (m - 1)) * tf.squeeze(
+        ans = (1. / (m - 1)) * tf.squeeze(
             dot([Xg_bar_dummy_batch, Xg_bar_dummy_batch], axes=1), axis=0)              # [d, d]
+        print("ans -", ans)
+        return ans
 
     # convariance matrixs for all the classes
     covs_t = tf.map_fn(
         compute_cov, (classes,
                       tf.repeat(tf.expand_dims(X, 0), num_classes, axis=0),
                       tf.repeat(tf.expand_dims(y, 0), num_classes, axis=0)),
-        dtype=tf.float32)                                                               # [cls, d, d]
+        fn_output_signature=tf.float32)                                                               # [cls, d, d]
     # Within-class scatter matrix
     Sw = tf.reduce_mean(covs_t, axis=0)                                                 # [d, d]
 
@@ -208,9 +210,11 @@ class lda_loss(keras.losses.Loss):
 
     def call(self, y_true, y_pred):
         print("In linear_discriminative_loss()")
+        print('y_true ', y_true)
+        print('y_pred ', y_pred)
         eigvals = linear_discriminative_eigvals(y_true, y_pred)                           # [cls]
 
-        print(eigvals)
+        print("Eigvals- ", eigvals)
 
         # At most cls - 1 non-zero eigenvalues
         classes = tf.raw_ops.UniqueV2(x=y_true, axis=[0]).y                                                          # [cls]
@@ -221,4 +225,6 @@ class lda_loss(keras.losses.Loss):
         # maximize variance between classes
         top_k_eigvals = eigvals[eigvals <= thresh]                                          # [None]
         costs = -tf.reduce_mean(top_k_eigvals)                                              # []
+
+        print("Costs- ", costs)
         return costs

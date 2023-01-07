@@ -4,8 +4,9 @@
 import tensorflow as tf
 from tensorflow import keras
 
+BATCH_SIZE = 1000
 
-def create_model(input_dim, reg_par, outdim_size):
+def create_model(batch_size = BATCH_SIZE):
     """
     Builds the model
     The structure of the model can get easily substituted with a more efficient and powerful network like CNN
@@ -19,7 +20,7 @@ def create_model(input_dim, reg_par, outdim_size):
 
     # return model
 
-    l_in = keras.Input(shape=(28, 28, 1))
+    l_in = keras.Input(shape=(28, 28, 1), batch_size=batch_size)
     print(l_in.shape)
 
     # ---conv layer ---
