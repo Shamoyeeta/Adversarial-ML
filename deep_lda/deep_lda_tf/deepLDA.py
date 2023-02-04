@@ -6,9 +6,11 @@ from svm import svm_classify
 from models import create_model
 from keras.optimizers import Adam
 from objectives import lda_loss
+from keras.callbacks import EarlyStopping
 
 import os
 os.environ['KERAS_BACKEND'] = 'theano'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 if __name__ == '__main__':
     ############
@@ -23,9 +25,6 @@ if __name__ == '__main__':
     # the parameters for training the network
     epoch_num = 2
     batch_size = 1000
-
-    # the regularization parameter of the network
-    reg_par = 1e-5
 
     # The margin and n_components (number of components) parameter used in the loss function
     # n_components should be at most class_size-1
@@ -51,11 +50,12 @@ if __name__ == '__main__':
     model = create_model(batch_size=batch_size)
 
     model_optimizer = Adam()
-    model.compile(loss=lda_loss(n_components, margin), optimizer=model_optimizer)
+    callback = EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True)
+    model.compile(loss=lda_loss(), optimizer=model_optimizer)
 
     model.summary()
 
-    history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epoch_num, shuffle=True, validation_split=0.2, verbose=2)
+    history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epoch_num, shuffle=True, validation_split=0.2, callbacks=[callback], verbose=2)
 
     print('History- ', history.history)
 
@@ -72,3 +72,4 @@ if __name__ == '__main__':
     f = gzip.open(save_to, 'wb')
     pickle.dump([(x_train_new, y_train), (x_test_new, y_test)], f)
     f.close()
+

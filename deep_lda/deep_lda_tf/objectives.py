@@ -203,9 +203,7 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
 
 
 class lda_loss(keras.losses.Loss):
-    def __init__(self, n_components, margin, name="lda_loss"):
-        self.margin = margin
-        self.n_components = n_components
+    def __init__(self, name="lda_loss"):
         super().__init__(name=name)
 
     def call(self, y_true, y_pred):
