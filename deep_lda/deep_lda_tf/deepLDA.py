@@ -10,21 +10,21 @@ from keras.callbacks import EarlyStopping
 
 import os
 os.environ['KERAS_BACKEND'] = 'theano'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 if __name__ == '__main__':
     ############
     # Parameters Section
 
     # the path to save the final learned features
-    save_to = './new_features.gz'
+    save_features = './new_features.gz'
 
     # the size of the new space learned by the model (number of the new features)
     outdim_size = 10
 
     # the parameters for training the network
     epoch_num = 2
-    batch_size = 1000
+    batch_size = 500
 
     # The margin and n_components (number of components) parameter used in the loss function
     # n_components should be at most class_size-1
@@ -62,14 +62,18 @@ if __name__ == '__main__':
     x_train_new = model.predict(x_train)
     x_test_new = model.predict(x_test)
 
+    # Saving model parameters in a gzip pickled file specified by save_model
+    print('Saving model...')
+    model.save("./model")
+
     # Training and testing of SVM with linear kernel on the new features
     [train_acc, test_acc] = svm_classify(x_train_new, y_train, x_test_new, y_test, C=C)
     print("Accuracy on train data is:", train_acc * 100.0)
     print("Accuracy on test data is:", test_acc*100.0)
 
-    # Saving new features in a gzip pickled file specified by save_to
+    # Saving new features in a gzip pickled file specified by save_features
     print('Saving new features ...')
-    f = gzip.open(save_to, 'wb')
+    f = gzip.open(save_features, 'wb')
     pickle.dump([(x_train_new, y_train), (x_test_new, y_test)], f)
     f.close()
 

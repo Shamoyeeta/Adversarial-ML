@@ -11,14 +11,6 @@ def create_model(batch_size = BATCH_SIZE):
     Builds the model
     The structure of the model can get easily substituted with a more efficient and powerful network like CNN
     """
-    # model = Sequential()
-    #
-    # model.add(Dense(1024, input_shape=(input_dim,), activation='sigmoid', kernel_regularizer=l2(reg_par)))
-    # model.add(Dense(1024, activation='sigmoid', kernel_regularizer=l2(reg_par)))
-    # model.add(Dense(1024, activation='sigmoid', kernel_regularizer=l2(reg_par)))
-    # model.add(Dense(outdim_size, activation='linear', kernel_regularizer=l2(reg_par)))
-
-    # return model
 
     l_in = keras.Input(shape=(28, 28, 1), batch_size=batch_size)
     print(l_in.shape)
