@@ -156,9 +156,12 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
     """
     X = tf.convert_to_tensor(X, tf.float32)                                             # [N, d]
     y = tf.squeeze(tf.cast(tf.convert_to_tensor(y), tf.int32))                          # [N]
+    print(X.shape)
+    print(y.shape)
     y.set_shape(X.shape[:-1])                                                           # [N]
     classes = tf.sort(tf.raw_ops.UniqueV2(x=y, axis=[0]).y)
     num_classes = tf.shape(classes)[0]
+
 
     def compute_cov(args):
         i, Xcopy, ycopy = args
@@ -169,10 +172,11 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
         Xg_bar_dummy_batch = tf.expand_dims(Xg_bar, axis=0)                             # [1, None, d]
         ans = (1. / (m - 1)) * tf.squeeze(
             dot([Xg_bar_dummy_batch, Xg_bar_dummy_batch], axes=1), axis=0)              # [d, d]
+        ans = np.nan_to_num(ans)
         print("ans -", ans)
         return ans
 
-    # convariance matrixs for all the classes
+    # covariance matrixs for all the classes
     covs_t = tf.map_fn(
         compute_cov, (classes,
                       tf.repeat(tf.expand_dims(X, 0), num_classes, axis=0),
