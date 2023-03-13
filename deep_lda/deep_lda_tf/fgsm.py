@@ -59,19 +59,19 @@ x_test = x_test.astype('float32') / 255
 # Get image and its label
 # sample = random.sample(range(0, 10000), 10)
 # sample = 1  # random.randint(0, 1000)
-image = x_test[:10]
-label = y_test[:10]
+image = x_test
+label = y_test
 
 perturbations = create_adversarial_pattern(image, label)
-# visualize the perturbations
-plt.imshow(perturbations[0] * 0.5 + 0.5);  # To change [-1, 1] to [0,1]
+# # visualize the perturbations
+# plt.imshow(perturbations[0] * 0.5 + 0.5);  # To change [-1, 1] to [0,1]
 
-epsilons = [0, 0.01, 0.1, 0.15]
+epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 descriptions = [('Epsilon = {:0.3f}'.format(eps) if eps else 'Input')
                 for eps in epsilons]
 
 
-def img_plot(images, epsilon):
+def img_plot(images, epsilon, labels):
     num = images.shape[0]
     num_row = 2
     num_col = 5
@@ -80,7 +80,8 @@ def img_plot(images, epsilon):
     for i in range(num):
         ax = axes[i // num_col, i % num_col]
         ax.imshow(images[i], cmap='gray')
-    plt.title("Epsilon= " + str(epsilon))
+        ax.set_title("Prediction = " + str(labels[i]))
+    plt.get_current_fig_manager().set_window_title("Epsilon= " + str(epsilon))
     plt.tight_layout()
     plt.show()
 
@@ -89,6 +90,6 @@ for i, eps in enumerate(epsilons):
     adv_x = image + eps * perturbations
     adv_x = tf.clip_by_value(adv_x, -1, 1)
     adv_x_new = model.predict(adv_x)
-    [train_acc, test_acc] = svm_classify(x_train_new, y_train_new, adv_x_new, label)
+    [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, adv_x_new, label)
     print("New prediction on eps="+str(eps)+" : ", test_acc*100)
-    img_plot(adv_x, eps)
+    img_plot(adv_x[:10], eps, pred)

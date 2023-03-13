@@ -23,7 +23,7 @@ if __name__ == '__main__':
     outdim_size = 10
 
     # the parameters for training the network
-    epoch_num = 2
+    epoch_num = 100
     batch_size = 500
 
     # The margin and n_components (number of components) parameter used in the loss function
@@ -67,7 +67,7 @@ if __name__ == '__main__':
     model.save("./model")
 
     # Training and testing of SVM with linear kernel on the new features
-    [train_acc, test_acc] = svm_classify(x_train_new, y_train, x_test_new, y_test, C=C)
+    [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train, x_test_new, y_test, C=C)
     print("Accuracy on train data is:", train_acc * 100.0)
     print("Accuracy on test data is:", test_acc*100.0)
 

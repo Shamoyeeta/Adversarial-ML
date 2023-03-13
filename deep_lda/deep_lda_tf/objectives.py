@@ -97,7 +97,7 @@ def eigvalsh(A, B):
 
     """
     w, v = tf.py_function(slinalg.eigh, inp=[A, B], Tout=[tf.float32, tf.float32])
-    w.set_shape(A.shape[0])     # set_shape here is necessary
+    w.set_shape(A.shape[0])  # set_shape here is necessary
 
     def grad(dw):
         gA = tf.matmul(v, tf.matmul(tf.linalg.diag(dw), tf.transpose(v, (1, 0))))
@@ -116,8 +116,10 @@ def eigvalsh(A, B):
 
     return w, grad
 
+
 def eigh(A, B):
     return tf.py_function(slinalg.eigh, inp=[A, B], Tout=[tf.float32, tf.float32])
+
 
 def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
     """
@@ -154,26 +156,27 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
     Dorfer M, Kelz R, Widmer G. Deep linear discriminant analysis[J]. arXiv preprint arXiv:1511.04707, 2015.
 
     """
-    X = tf.convert_to_tensor(X, tf.float32)                                             # [N, d]
-    y = tf.squeeze(tf.cast(tf.convert_to_tensor(y), tf.int32))                          # [N]
+    X = tf.convert_to_tensor(X, tf.float32)  # [N, d]
+    y = tf.squeeze(tf.cast(tf.convert_to_tensor(y), tf.int32))  # [N]
     print(X.shape)
     print(y.shape)
-    y.set_shape(X.shape[:-1])                                                           # [N]
+    y.set_shape(X.shape[:-1])  # [N]
     classes = tf.sort(tf.raw_ops.UniqueV2(x=y, axis=[0]).y)
     num_classes = tf.shape(classes)[0]
-
 
     def compute_cov(args):
         i, Xcopy, ycopy = args
         # Hypothesis: equal number of samples (Ni) for each class
-        Xg = Xcopy[ycopy == i]                                                          # [None, d]
-        Xg_bar = Xg - tf.reduce_mean(Xg, axis=0, keepdims=True)                         # [None, d]
-        m = tf.cast(tf.shape(Xg_bar)[0], tf.float32)                                    # []
-        Xg_bar_dummy_batch = tf.expand_dims(Xg_bar, axis=0)                             # [1, None, d]
+        Xg = Xcopy[ycopy == i]  # [None, d]
+        Xg_bar = Xg - tf.reduce_mean(Xg, axis=0, keepdims=True)  # [None, d]
+        m = tf.cast(tf.shape(Xg_bar)[0], tf.float32)  # []
+        Xg_bar_dummy_batch = tf.expand_dims(Xg_bar, axis=0)  # [1, None, d]
         ans = (1. / (m - 1)) * tf.squeeze(
-            dot([Xg_bar_dummy_batch, Xg_bar_dummy_batch], axes=1), axis=0)              # [d, d]
-        ans = np.nan_to_num(ans)
-        print("ans -", ans)
+            dot([Xg_bar_dummy_batch, Xg_bar_dummy_batch], axes=1), axis=0)  # [d, d]
+        try:
+            ans = np.nan_to_num(ans)
+        except:
+            print("ans -", ans)
         return ans
 
     # covariance matrixs for all the classes
@@ -181,19 +184,19 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
         compute_cov, (classes,
                       tf.repeat(tf.expand_dims(X, 0), num_classes, axis=0),
                       tf.repeat(tf.expand_dims(y, 0), num_classes, axis=0)),
-        fn_output_signature=tf.float32)                                                               # [cls, d, d]
+        fn_output_signature=tf.float32)  # [cls, d, d]
     # Within-class scatter matrix
-    Sw = tf.reduce_mean(covs_t, axis=0)                                                 # [d, d]
+    Sw = tf.reduce_mean(covs_t, axis=0)  # [d, d]
 
     # Total scatter matrix
-    X_bar = X - tf.reduce_mean(X, axis=0, keepdims=True)                                # [N, d]
+    X_bar = X - tf.reduce_mean(X, axis=0, keepdims=True)  # [N, d]
     m = tf.cast(X_bar.shape[0], tf.float32)  # []
-    X_bar_dummy_batch = tf.expand_dims(X_bar, axis=0)                                   # [1, N, d]
+    X_bar_dummy_batch = tf.expand_dims(X_bar, axis=0)  # [1, N, d]
     St = (1. / (m - 1)) * tf.squeeze(
-        dot([X_bar_dummy_batch, X_bar_dummy_batch], axes=1), axis=0)                    # [d, d]
+        dot([X_bar_dummy_batch, X_bar_dummy_batch], axes=1), axis=0)  # [d, d]
 
     # Between-class scatter matrix
-    Sb = St - Sw                                                                        # [d, d]
+    Sb = St - Sw  # [d, d]
 
     # Force Sw_t to be positive-definite (for numerical stability)
     Sw = Sw + tf.eye(Sw.shape[0]) * lambda_val  # [d, d]
@@ -201,9 +204,9 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
     # Solve the generalized eigenvalue problem: Sb * W = lambda * Sw * W
     # We use the customed `eigh` function for generalized eigenvalue problem
     if ret_vecs:
-        return eigh(Sb, Sw)                                                             # [cls], [d, cls]
+        return eigh(Sb, Sw)  # [cls], [d, cls]
     else:
-        return eigvalsh(Sb, Sw)                                                          # [cls]
+        return eigvalsh(Sb, Sw)  # [cls]
 
 
 class lda_loss(keras.losses.Loss):
@@ -214,19 +217,19 @@ class lda_loss(keras.losses.Loss):
         print("In linear_discriminative_loss()")
         print('y_true ', y_true)
         print('y_pred ', y_pred)
-        eigvals = linear_discriminative_eigvals(y_true, y_pred)                           # [cls]
+        eigvals = linear_discriminative_eigvals(y_true, y_pred)  # [cls]
 
         print("Eigvals- ", eigvals)
 
         # At most cls - 1 non-zero eigenvalues
-        classes = tf.raw_ops.UniqueV2(x=y_true, axis=[0]).y                                                          # [cls]
+        classes = tf.raw_ops.UniqueV2(x=y_true, axis=[0]).y  # [cls]
         cls = tf.shape(classes)[0]
-        eigvals = eigvals[-cls + 1:]                                                        # [cls - 1]
-        thresh = tf.reduce_min(eigvals) + 1.0                                               # []
+        eigvals = eigvals[-cls + 1:]  # [cls - 1]
+        thresh = tf.reduce_min(eigvals) + 1.0  # []
 
         # maximize variance between classes
-        top_k_eigvals = eigvals[eigvals <= thresh]                                          # [None]
-        costs = -tf.reduce_mean(top_k_eigvals)                                              # []
+        top_k_eigvals = eigvals[eigvals <= thresh]  # [None]
+        costs = -tf.reduce_mean(top_k_eigvals)  # []
 
         print("Costs- ", costs)
         return costs

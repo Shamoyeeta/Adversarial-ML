@@ -18,4 +18,4 @@ def svm_classify(x_train, y_train, x_test, y_test, C = 1e-1):
     p = clf.predict(x_test)
     test_acc = accuracy_score(y_test, p)
 
-    return [train_acc, test_acc]
+    return [train_acc, test_acc, p]
