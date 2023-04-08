@@ -59,8 +59,8 @@ x_test = x_test.astype('float32') / 255
 # Get image and its label
 # sample = random.sample(range(0, 10000), 10)
 # sample = 1  # random.randint(0, 1000)
-image = x_test
-label = y_test
+image = x_test[:20]
+label = y_test[:20]
 
 perturbations = create_adversarial_pattern(image, label)
 # # visualize the perturbations

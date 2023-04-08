@@ -23,7 +23,7 @@ if __name__ == '__main__':
     outdim_size = 10
 
     # the parameters for training the network
-    epoch_num = 100
+    epoch_num = 5 # 100
     batch_size = 500
 
     # The margin and n_components (number of components) parameter used in the loss function

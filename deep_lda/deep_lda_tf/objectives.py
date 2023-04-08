@@ -166,8 +166,12 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
 
     def compute_cov(args):
         i, Xcopy, ycopy = args
+        print('i - ', i)
+        print('Xcopy - ', Xcopy)
+        print('ycopy - ', ycopy)
         # Hypothesis: equal number of samples (Ni) for each class
         Xg = Xcopy[ycopy == i]  # [None, d]
+        print('Xg - ', Xg)
         Xg_bar = Xg - tf.reduce_mean(Xg, axis=0, keepdims=True)  # [None, d]
         m = tf.cast(tf.shape(Xg_bar)[0], tf.float32)  # []
         Xg_bar_dummy_batch = tf.expand_dims(Xg_bar, axis=0)  # [1, None, d]
