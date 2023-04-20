@@ -337,5 +337,5 @@ X_adv_new = model.predict(X_adv)
 # print(X_adv_new)
 [train_acc1, test_acc1, pred1] = svm_classify(x_train_new, y_train_new, X_adv_new, label)
 
-print("Prediction on original data= ", test_acc1 * 100)
+print("Prediction on adversarial data= ", test_acc1 * 100)
 img_plot(X_adv[:10], pred1)
