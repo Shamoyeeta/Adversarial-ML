@@ -19,3 +19,5 @@ def svm_classify(x_train, y_train, x_test, y_test, C = 1e-1):
     test_acc = accuracy_score(y_test, p)
 
     return [train_acc, test_acc, p]
+
+
