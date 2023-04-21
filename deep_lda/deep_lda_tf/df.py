@@ -92,8 +92,10 @@ def _deepfool2(model, x, epochs, eta, clip_min, clip_max, min_prob):
 
     def _body(i, z):
         xadv = tf.clip_by_value(x + z * (1 + eta), clip_min, clip_max)
-        y = tf.reshape(model(xadv), [-1])[0]
-        g = tf.gradients(ys=y, xs=xadv)[0]
+        with tf.GradientTape as tape:
+            tape.watch(xadv)
+            y = tf.reshape(model(xadv), [-1])[0]
+        g = tape.gradient(y, xadv)
         dx = - y * g / (tf.norm(tensor=g) + 1e-10)  # off by a factor of 1/norm(g)
         return i + 1, z + dx
 
@@ -116,8 +118,10 @@ def _deepfool2_batch(model, x, epochs, eta, clip_min, clip_max):
 
     def _body(i, z):
         xadv = tf.clip_by_value(x + z * (1 + eta), clip_min, clip_max)
-        y = tf.reshape(model(xadv), [-1])
-        g = tf.gradients(ys=y, xs=xadv)[0]
+        with tf.GradientTape as tape:
+            tape.watch(xadv)
+            y = tf.reshape(model(xadv), [-1])[0]
+        g = tape.gradient(y, xadv)
         n = tf.norm(tensor=tf.reshape(g, [-1, dim]), axis=1) + 1e-10
         d = tf.reshape(-y / n, [-1] + [1] * len(xshape))
         dx = g * d
@@ -155,20 +159,14 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     def _body(i, z):
         xadv = tf.clip_by_value(x + z * (1 + eta), clip_min, clip_max)
 
-        #TODO : Find gradient relationship
         with tf.GradientTape() as tape:
             tape.watch(xadv)
             y = model(xadv)
 
-        # print([var.name for var in tape.watched_variables()])
-
-        #TODO: Old code was trying to find gradient wrt y[i] where i was probably for each class
-        h = tape.gradient(y, xadv)
-        y = tf.reshape(y, [-1])
-        # print(h)
-        gs = [tf.reshape(h, [-1])
+        gs = [tf.reshape(tape.gradient(y[i], xadv), [-1])
               for i in range(ydim)]
         g = tf.stack(gs, axis=0)
+        y = tf.reshape(y, [-1])
         print('gs -', gs)
         print('g - ', g)
 
@@ -179,11 +177,8 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
         go.set_shape([ydim - 1, xflat])
 
         a = tf.abs(yo - yk)
-        print('a - ', a)
         b = go - gk
-        print('b - ', b)
         c = tf.norm(tensor=b, axis=1)
-        print('c - ', c)
         score = a / c
         ind = tf.argmin(input=score)
 

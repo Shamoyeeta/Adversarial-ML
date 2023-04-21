@@ -6,11 +6,20 @@ from keras.datasets import mnist
 from keras.optimizers import Adam
 from keras.utils import to_categorical
 from sklearn.metrics import accuracy_score
+def img_plot(images, epsilon, labels):
+    num = images.shape[0]
+    num_row = 2
+    num_col = 5
+    # plot images
+    fig, axes = plt.subplots(num_row, num_col, figsize=(1.5 * num_col, 2 * num_row))
+    for i in range(num):
+        ax = axes[i // num_col, i % num_col]
+        ax.imshow(images[i], cmap='gray')
+        ax.set_title("Prediction = " + str(labels[i]))
+    plt.get_current_fig_manager().set_window_title("Epsilon= " + str(epsilon))
+    plt.tight_layout()
+    plt.show()
 
-# the path to the saved model
-model = tf.keras.models.load_model("./model", compile=False)
-model.compile(loss=CategoricalCrossentropy(), optimizer=Adam(), metrics=["accuracy"])
-loss_object = CategoricalCrossentropy()
 
 
 def create_adversarial_pattern(input_image, input_label):
@@ -26,6 +35,11 @@ def create_adversarial_pattern(input_image, input_label):
     # Get the sign of the gradients to create the perturbation
     signed_grad = tf.sign(gradient)
     return signed_grad
+
+# the path to the saved model
+model = tf.keras.models.load_model("./model", compile=False)
+model.compile(loss=CategoricalCrossentropy(), optimizer=Adam(), metrics=["accuracy"])
+loss_object = CategoricalCrossentropy()
 
 
 # Load data
@@ -45,8 +59,8 @@ y_train = to_categorical(y_train, num_category)
 y_test = to_categorical(y_test, num_category)
 
 # Get image and its label
-image = x_test
-label = y_test
+image = x_test[:20]
+label = y_test[:20]
 
 perturbations = create_adversarial_pattern(image, label)
 # # visualize the perturbations
@@ -56,28 +70,12 @@ epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 descriptions = [('Epsilon = {:0.3f}'.format(eps) if eps else 'Input')
                 for eps in epsilons]
 
-
-def img_plot(images, epsilon, labels):
-    num = images.shape[0]
-    num_row = 2
-    num_col = 5
-    # plot images
-    fig, axes = plt.subplots(num_row, num_col, figsize=(1.5 * num_col, 2 * num_row))
-    for i in range(num):
-        ax = axes[i // num_col, i % num_col]
-        ax.imshow(images[i], cmap='gray')
-        ax.set_title("Prediction = " + str(labels[i]))
-    plt.get_current_fig_manager().set_window_title("Epsilon= " + str(epsilon))
-    plt.tight_layout()
-    plt.show()
-
-
 for i, eps in enumerate(epsilons):
     adv_x = (image + (eps * perturbations)).numpy()
     adv_x = tf.clip_by_value(adv_x, -1, 1)
 
     pred = np.argmax(model.predict(adv_x), axis=1)
-    label = np.argmax(y_test, axis=1)
+    label = np.argmax(y_test[:20], axis=1)
     test_acc = accuracy_score(pred, label)
     print("New prediction on eps=" + str(eps) + " : ", test_acc*100)
     img_plot(adv_x[:10], eps, pred)

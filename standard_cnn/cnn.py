@@ -7,6 +7,7 @@ from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping
 from keras.losses import CategoricalCrossentropy
 from keras.utils import to_categorical
+from scipy.special import softmax
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -16,7 +17,7 @@ if __name__ == '__main__':
     # Parameters Section
 
     # the parameters for training the network
-    epoch_num = 100
+    epoch_num = 5
     batch_size = 500
 
     # Parameter C of SVM
@@ -29,7 +30,7 @@ if __name__ == '__main__':
 
     image_size = x_train.shape[1]
     x_train = np.reshape(x_train, [-1, image_size, image_size, 1])
-    x_test = np.reshape(x_test,[-1, image_size, image_size, 1])
+    x_test = np.reshape(x_test, [-1, image_size, image_size, 1])
 
     x_train = x_train.astype('float32') / 255
     x_test = x_test.astype('float32') / 255

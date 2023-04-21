@@ -314,14 +314,12 @@ image = x_test[:5]
 label = y_test[:5]
 
 print('\nGenerating adversarial data')
-# X_adv = make_deepfool(sess, env, X_test, epochs=3)
 X_adv = make_deepfool(model, image, epochs=1)
-# print('X_adv- ', X_adv)
 
 print('\nEvaluating on adversarial data')
-pred = np.argmax(model.predict(adv_x), axis=1)
+pred = np.argmax(model.predict(X_adv), axis=1)
 label = np.argmax(y_test, axis=1)
 test_acc = accuracy_score(pred, label)
 
-print("Prediction on original data= ", test_acc * 100)
+print("Prediction on adversarial data= ", test_acc * 100)
 img_plot(X_adv[:10], pred)
