@@ -10,6 +10,7 @@ import matplotlib.gridspec as gridspec
 from objectives import lda_loss
 from keras.datasets import mnist
 from keras.optimizers import Adam
+from keras import backend as K
 from svm import svm_classify
 from keras.utils import to_categorical
 import time
@@ -102,7 +103,6 @@ def _jsma_impl(model, x, yind, epochs, eps1, clip_min, clip_max, score_fn):
 
         # find the pixel with the highest saliency score
         ind = tf.argmax(score, axis=1)
-        eps = tf.to_float
         dx = tf.one_hot(ind, dim, on_value=eps1, off_value=0.0)
         dx = tf.reshape(dx, [-1] + shape[1:])
 
@@ -452,14 +452,19 @@ num_category = 10
 image = x_test[:20]
 label = y_test[:20]
 
+
 print('\nGenerating adversarial data')\
 # X_adv = make_jsma(sess, env, X_test, epochs=30, eps=3)
 X_adv = make_jsma(model, image, epochs=30, eps=1.0)
 
-print('\nEvaluating on adversarial data')
-X_adv_new = model.predict(X_adv)
+get_flatten_layer_output = K.function(
+  [model.layers[0].input], # param 1 will be treated as layer[0].output
+  [model.get_layer('flatten').output]) # and this function will return output from flatten layer
 
-[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, X_adv_new, label)
+print('\nEvaluating on adversarial data')
+X_adv_new = get_flatten_layer_output(X_adv)[0]
+
+[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], X_adv_new, label)
 
 print("Prediction on adversarial data= ", test_acc * 100)
 img_plot(X_adv[:10], pred)

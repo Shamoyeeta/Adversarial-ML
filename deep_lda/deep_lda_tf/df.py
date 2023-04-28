@@ -10,6 +10,7 @@ import matplotlib.gridspec as gridspec
 from objectives import lda_loss
 from keras.datasets import mnist
 from keras.optimizers import Adam
+from keras import backend as K
 from svm import svm_classify
 from keras.utils import to_categorical
 import time
@@ -159,16 +160,20 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     def _body(i, z):
         xadv = tf.clip_by_value(x + z * (1 + eta), clip_min, clip_max)
 
-        with tf.GradientTape() as tape:
+        with tf.GradientTape(persistent=True) as tape:
             tape.watch(xadv)
             y = model(xadv)
 
-        gs = [tf.reshape(tape.gradient(y[i], xadv), [-1])
+        # print(ydim)
+
+        gs = [tf.reshape(tape.gradient(y, xadv), [-1])
               for i in range(ydim)]
+        del tape
         g = tf.stack(gs, axis=0)
         y = tf.reshape(y, [-1])
-        print('gs -', gs)
-        print('g - ', g)
+        # print(y)
+        # print('gs -', gs)
+        # print('g - ', g)
 
         yk, yo = y[k0], tf.concat((y[:k0], y[(k0 + 1):]), axis=0)
         gk, go = g[k0], tf.concat((g[:k0], g[(k0 + 1):]), axis=0)
@@ -319,18 +324,22 @@ x_test = x_test.astype('float32') / 255
 # set number of categories
 num_category = 10
 
-image = x_test[:5]
-label = y_test[:5]
+image = x_test[:20]
+label = y_test[:20]
 
 print('\nGenerating adversarial data')
 # X_adv = make_deepfool(sess, env, X_test, epochs=3)
 X_adv = make_deepfool(model, image, epochs=1)
 # print('X_adv- ', X_adv)
 
+get_flatten_layer_output = K.function(
+  [model.layers[0].input], # param 1 will be treated as layer[0].output
+  [model.get_layer('flatten').output]) # and this function will return output from flatten layer
+
 print('\nEvaluating on adversarial data')
-X_adv_new = model.predict(X_adv)
+X_adv_new = get_flatten_layer_output(X_adv)[0]
 # print(X_adv_new)
-[train_acc1, test_acc1, pred1] = svm_classify(x_train_new, y_train_new, X_adv_new, label)
+[train_acc1, test_acc1, pred1] = svm_classify(x_train_new, y_train_new[:20], X_adv_new, label)
 
 print("Prediction on adversarial data= ", test_acc1 * 100)
 img_plot(X_adv[:10], pred1)

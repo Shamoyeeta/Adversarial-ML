@@ -7,6 +7,7 @@ from models import create_model
 from keras.optimizers import Adam
 from objectives import lda_loss
 from keras.callbacks import EarlyStopping
+from keras import backend as K
 
 import os
 os.environ['KERAS_BACKEND'] = 'theano'
@@ -23,7 +24,7 @@ if __name__ == '__main__':
     outdim_size = 10
 
     # the parameters for training the network
-    epoch_num = 5 # 100
+    epoch_num = 100
     batch_size = 500
 
     # The margin and n_components (number of components) parameter used in the loss function
@@ -59,8 +60,12 @@ if __name__ == '__main__':
 
     print('History- ', history.history)
 
-    x_train_new = model.predict(x_train)
-    x_test_new = model.predict(x_test)
+    get_flatten_layer_output = K.function(
+        [model.layers[0].input],  # param 1 will be treated as layer[0].output
+        [model.get_layer('flatten').output])  # and this function will return output from flatten layer
+
+    x_train_new = get_flatten_layer_output(x_train)[0]
+    x_test_new = get_flatten_layer_output(x_test)[0]
 
     # Saving model parameters in a gzip pickled file specified by save_model
     print('Saving model...')

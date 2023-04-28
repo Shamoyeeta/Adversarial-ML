@@ -54,8 +54,10 @@ def create_model(batch_size = BATCH_SIZE):
                                  )(net)
     net = tf.keras.layers.BatchNormalization()(net)
     net = tf.keras.layers.GlobalAveragePooling2D()(net)
+    net = tf.keras.layers.Flatten()(net)
     l_out = tf.keras.layers.Dense(10)(net)
 
     model_built = tf.keras.Model(l_in, l_out)
     print(model_built.summary())
     return model_built
+

@@ -7,8 +7,8 @@ from objectives import lda_loss
 import numpy as np
 from keras.datasets import mnist
 from keras.optimizers import Adam
-import random
 from svm import svm_classify
+from keras import backend as K
 
 loss_object = lda_loss()
 
@@ -70,6 +70,9 @@ epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 descriptions = [('Epsilon = {:0.3f}'.format(eps) if eps else 'Input')
                 for eps in epsilons]
 
+get_flatten_layer_output = K.function(
+        [model.layers[0].input],  # param 1 will be treated as layer[0].output
+        [model.get_layer('flatten').output])  # and this function will return output from flatten layer
 
 def img_plot(images, epsilon, labels):
     num = images.shape[0]
@@ -89,7 +92,7 @@ def img_plot(images, epsilon, labels):
 for i, eps in enumerate(epsilons):
     adv_x = image + eps * perturbations
     adv_x = tf.clip_by_value(adv_x, -1, 1)
-    adv_x_new = model.predict(adv_x)
-    [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, adv_x_new, label)
+    adv_x_new = get_flatten_layer_output(adv_x)[0]
+    [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], adv_x_new, label)
     print("New prediction on eps="+str(eps)+" : ", test_acc*100)
     img_plot(adv_x[:10], eps, pred)

@@ -1,16 +1,16 @@
 import tensorflow as tf
-import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-
 from keras.losses import CategoricalCrossentropy
+import numpy as np
 from keras.datasets import mnist
 from keras.optimizers import Adam
 from keras.utils import to_categorical
 from sklearn.metrics import accuracy_score
 import time
-
+import os
+from timeit import default_timer
+import matplotlib.pyplot as plt
+from keras import backend as K
 
 maxTime = 0
 
@@ -53,9 +53,9 @@ def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
                    clip_max=clip_max, min_prob=min_prob)
             return z[0]
 
-        delta = tf.map_fn(_f, x, dtype=(tf.float32), back_prop=False,
-                          name='deepfool')
-        # delta = tf.nest.map_structure(tf.stop_gradient, tf.map_fn(_f, x, dtype=(tf.float32), name='deepfool'))
+        # delta = tf.map_fn(_f, x, dtype=(tf.float32), back_prop=False,
+        #                   name='deepfool')
+        delta = tf.nest.map_structure(tf.stop_gradient, tf.map_fn(_f, x, dtype=(tf.float32), name='deepfool'))
 
     if noise:
         print('Noise - ', delta)
@@ -89,8 +89,10 @@ def _deepfool2(model, x, epochs, eta, clip_min, clip_max, min_prob):
 
     def _body(i, z):
         xadv = tf.clip_by_value(x + z * (1 + eta), clip_min, clip_max)
-        y = tf.reshape(model(xadv), [-1])[0]
-        g = tf.gradients(ys=y, xs=xadv)[0]
+        with tf.GradientTape as tape:
+            tape.watch(xadv)
+            y = tf.reshape(model(xadv), [-1])[0]
+        g = tape.gradient(y, xadv)
         dx = - y * g / (tf.norm(tensor=g) + 1e-10)  # off by a factor of 1/norm(g)
         return i + 1, z + dx
 
@@ -113,8 +115,10 @@ def _deepfool2_batch(model, x, epochs, eta, clip_min, clip_max):
 
     def _body(i, z):
         xadv = tf.clip_by_value(x + z * (1 + eta), clip_min, clip_max)
-        y = tf.reshape(model(xadv), [-1])
-        g = tf.gradients(ys=y, xs=xadv)[0]
+        with tf.GradientTape as tape:
+            tape.watch(xadv)
+            y = tf.reshape(model(xadv), [-1])[0]
+        g = tape.gradient(y, xadv)
         n = tf.norm(tensor=tf.reshape(g, [-1, dim]), axis=1) + 1e-10
         d = tf.reshape(-y / n, [-1] + [1] * len(xshape))
         dx = g * d
@@ -152,20 +156,20 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     def _body(i, z):
         xadv = tf.clip_by_value(x + z * (1 + eta), clip_min, clip_max)
 
-        with tf.GradientTape() as tape:
+        with tf.GradientTape(persistent=True) as tape:
             tape.watch(xadv)
             y = model(xadv)
 
-        # print([var.name for var in tape.watched_variables()])
+        # print(ydim)
 
-        h = tape.gradient(y[i], xadv)
-        y = tf.reshape(y, [-1])
-        # print(h)
-        gs = [tf.reshape(h, [-1])
+        gs = [tf.reshape(tape.gradient(y, xadv), [-1])
               for i in range(ydim)]
+        del tape
         g = tf.stack(gs, axis=0)
-        print('gs -', gs)
-        print('g - ', g)
+        y = tf.reshape(y, [-1])
+        # print(y)
+        # print('gs -', gs)
+        # print('g - ', g)
 
         yk, yo = y[k0], tf.concat((y[:k0], y[(k0 + 1):]), axis=0)
         gk, go = g[k0], tf.concat((g[:k0], g[(k0 + 1):]), axis=0)
@@ -174,11 +178,8 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
         go.set_shape([ydim - 1, xflat])
 
         a = tf.abs(yo - yk)
-        print('a - ', a)
         b = go - gk
-        print('b - ', b)
         c = tf.norm(tensor=b, axis=1)
-        print('c - ', c)
         score = a / c
         ind = tf.argmin(input=score)
 
@@ -287,6 +288,21 @@ def img_plot(images, labels):
     plt.tight_layout()
     plt.show()
 
+def img_plot(images, labels):
+    num = images.shape[0]
+    num_row = 2
+    num_col = 5
+    # plot images
+    fig, axes = plt.subplots(num_row, num_col, figsize=(1.5 * num_col, 2 * num_row))
+    for i in range(num):
+        ax = axes[i // num_col, i % num_col]
+        ax.imshow(images[i], cmap='gray')
+        ax.set_title("Prediction = " + str(labels[i]))
+    plt.get_current_fig_manager().set_window_title("Deepfool")
+    plt.tight_layout()
+    plt.show()
+
+
 
 # the path to the saved model
 model = tf.keras.models.load_model("./model", compile=False)
@@ -310,16 +326,18 @@ y_train = to_categorical(y_train, num_category)
 y_test = to_categorical(y_test, num_category)
 
 # Get image and its label
-image = x_test[:5]
-label = y_test[:5]
+image = x_test[:20]
+label = y_test[:20]
 
 print('\nGenerating adversarial data')
 X_adv = make_deepfool(model, image, epochs=1)
 
 print('\nEvaluating on adversarial data')
+print(model(X_adv))
 pred = np.argmax(model.predict(X_adv), axis=1)
-label = np.argmax(y_test, axis=1)
+label = np.argmax(y_test[:20], axis=1)
 test_acc = accuracy_score(pred, label)
+print(pred)
 
 print("Prediction on adversarial data= ", test_acc * 100)
 img_plot(X_adv[:10], pred)

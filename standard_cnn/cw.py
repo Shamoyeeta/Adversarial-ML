@@ -10,10 +10,10 @@ import time
 import os
 from timeit import default_timer
 import matplotlib.pyplot as plt
-from scipy.special import softmax
+from keras import backend as K
 
-def inv_softmax(x, C):
-   return tf.math.log(x) + C
+# def inv_softmax(x, C):
+#    return tf.math.log(x) + C
 
 def cw(model, noise, x, y=None, eps=1.0, ord_=2, T=2,
        optimizer=Adam(learning_rate=0.1), alpha=0.9,
@@ -77,9 +77,13 @@ def cw(model, noise, x, y=None, eps=1.0, ord_=2, T=2,
         xadv = tf.sigmoid(T * (xinv + noise))  # 1
         xadv = xadv * (clip[1] - clip[0]) + clip[0] # 2
 
+        get_logit_layer_output = K.function(
+            [model.layers[0].input],  # param 1 will be treated as layer[0].output
+            [model.get_layer('dense').output])  # and this function will return output from flatten layer
+
         # ybar, logits = model(xadv, logits=True)
         ybar = model(xadv)
-        logits = inv_softmax(ybar, tf.math.log(10.))
+        logits = get_logit_layer_output(xadv)[0]
         ydim = ybar.shape[1]
 
         if y is not None:
@@ -267,6 +271,7 @@ print('\nGenerating adversarial data')
 X_adv = make_cw(model, image, eps=1, epochs=10)
 
 print('\nEvaluating on adversarial data')
+print(model.predict(X_adv))
 pred = np.argmax(model.predict(X_adv), axis=1)
 label = np.argmax(y_test[:20], axis=1)
 test_acc = accuracy_score(pred, label)

@@ -9,6 +9,7 @@ import pickle
 import gzip
 from keras.datasets import mnist
 from keras.optimizers import Adam
+from keras import backend as K
 
 from objectives import lda_loss
 from svm import svm_classify
@@ -267,11 +268,16 @@ x_test = x_test.astype('float32') / 255
 # set number of categories
 num_category = 10
 
-image = x_test[:100]
-label = y_test[:100]
+image = x_test[:20]
+label = y_test[:20]
+
+get_flatten_layer_output = K.function(
+  [model.layers[0].input], # param 1 will be treated as layer[0].output
+  [model.get_layer('flatten').output]) # and this function will return output from flatten layer
+
 
 print('\nEvaluating on original data')
-[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, x_test_new[:100], y_test_new[:100])
+[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], x_test_new[:20], y_test_new[:20])
 print("Prediction on original data= ", test_acc * 100)
 
 print('\nGenerating adversarial data')
@@ -279,7 +285,7 @@ print('\nGenerating adversarial data')
 X_adv = make_cw(model, image, eps=1, epochs=10)
 
 print('\nEvaluating on adversarial data')
-X_adv_new = model.predict(X_adv)
-[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, X_adv_new, label)
+X_adv_new = get_flatten_layer_output(X_adv)[0]
+[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], X_adv_new, label)
 print("Prediction on data= ", test_acc * 100)
 img_plot(X_adv[:10], pred)

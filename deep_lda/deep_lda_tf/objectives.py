@@ -158,17 +158,17 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
     """
     X = tf.convert_to_tensor(X, tf.float32)  # [N, d]
     y = tf.squeeze(tf.cast(tf.convert_to_tensor(y), tf.int32))  # [N]
-    print(X.shape)
-    print(y.shape)
+    # print(X.shape)
+    # print(y.shape)
     y.set_shape(X.shape[:-1])  # [N]
     classes = tf.sort(tf.raw_ops.UniqueV2(x=y, axis=[0]).y)
     num_classes = tf.shape(classes)[0]
 
     def compute_cov(args):
         i, Xcopy, ycopy = args
-        print('i - ', i)
-        print('Xcopy - ', Xcopy)
-        print('ycopy - ', ycopy)
+        # print('i - ', i)
+        # print('Xcopy - ', Xcopy)
+        # print('ycopy - ', ycopy)
         # Hypothesis: equal number of samples (Ni) for each class
         Xg = Xcopy[ycopy == i]  # [None, d]
         print('Xg - ', Xg)

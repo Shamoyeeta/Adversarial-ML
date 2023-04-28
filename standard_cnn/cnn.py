@@ -17,7 +17,7 @@ if __name__ == '__main__':
     # Parameters Section
 
     # the parameters for training the network
-    epoch_num = 5
+    epoch_num = 2
     batch_size = 500
 
     # Parameter C of SVM
@@ -49,6 +49,8 @@ if __name__ == '__main__':
     model.compile(loss=CategoricalCrossentropy(), optimizer=model_optimizer, metrics=["accuracy"])
 
     history = model.fit(x_train, y_train, batch_size=batch_size, epochs=epoch_num, shuffle=True, validation_split=0.2, callbacks=[callback], verbose=2)
+
+    print(history)
 
     print('History- ', history.history)
 
