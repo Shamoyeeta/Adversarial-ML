@@ -17,7 +17,7 @@ if __name__ == '__main__':
     # Parameters Section
 
     # the parameters for training the network
-    epoch_num = 2
+    epoch_num = 100
     batch_size = 500
 
     # Parameter C of SVM

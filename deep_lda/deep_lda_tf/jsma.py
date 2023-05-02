@@ -449,8 +449,8 @@ x_test = x_test.astype('float32') / 255
 # set number of categories
 num_category = 10
 
-image = x_test[:20]
-label = y_test[:20]
+image = x_test
+label = y_test
 
 
 get_flatten_layer_output = K.function(
@@ -467,7 +467,7 @@ for i, eps in enumerate(epsilons):
     print('\nEvaluating on adversarial data')
     X_adv_new = get_flatten_layer_output(X_adv)[0]
 
-    [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], X_adv_new, label)
+    [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, X_adv_new, label)
 
     print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)
     img_plot(X_adv[:10], pred)

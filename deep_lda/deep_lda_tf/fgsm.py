@@ -59,8 +59,8 @@ x_test = x_test.astype('float32') / 255
 # Get image and its label
 # sample = random.sample(range(0, 10000), 10)
 # sample = 1  # random.randint(0, 1000)
-image = x_test[:20]
-label = y_test[:20]
+image = x_test
+label = y_test
 
 perturbations = create_adversarial_pattern(image, label)
 # # visualize the perturbations
@@ -93,6 +93,6 @@ for i, eps in enumerate(epsilons):
     adv_x = image + eps * perturbations
     adv_x = tf.clip_by_value(adv_x, -1, 1)
     adv_x_new = get_flatten_layer_output(adv_x)[0]
-    [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], adv_x_new, label)
+    [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, adv_x_new, label)
     print("New prediction on eps="+str(eps)+" : ", test_acc*100)
     img_plot(adv_x[:10], eps, pred)
