@@ -266,15 +266,17 @@ y_test = to_categorical(y_test, num_category)
 image = x_test[:20]
 label = y_test[:20]
 
-print('\nGenerating adversarial data')
-# X_adv = make_cw(env, X_test, eps=1, epochs=100)
-X_adv = make_cw(model, image, eps=1, epochs=10)
+epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
-print('\nEvaluating on adversarial data')
-print(model.predict(X_adv))
-pred = np.argmax(model.predict(X_adv), axis=1)
-label = np.argmax(y_test[:20], axis=1)
-test_acc = accuracy_score(pred, label)
+for i, eps in enumerate(epsilons):
+  print('\nGenerating adversarial data')\
+  # X_adv = make_cw(sess, env, X_test, epochs=30, eps=3)
+  X_adv = make_cw(model, image, epochs=0, eps=eps)
 
-print("Prediction on adversarial data= ", test_acc * 100)
-img_plot(X_adv[:10], pred)
+  print('\nEvaluating on adversarial data')
+  pred = np.argmax(model.predict(X_adv), axis=1)
+  label = np.argmax(y_test[:20], axis=1)
+  test_acc = accuracy_score(pred, label)
+
+  print("Prediction on adversarial data (eps = " + str(eps)+")= ", test_acc * 100)
+  img_plot(X_adv[:10], pred)

@@ -226,13 +226,16 @@ y_test = to_categorical(y_test, num_category)
 image = x_test[:20]
 label = y_test[:20]
 
-print('\nGenerating adversarial data')
-X_adv = make_jsma(model, image, epochs=30, eps=1.0)
+epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
-print('\nEvaluating on adversarial data')
-pred = np.argmax(model.predict(X_adv), axis=1)
-label = np.argmax(y_test[:20], axis=1)
-test_acc = accuracy_score(pred, label)
+for i, eps in enumerate(epsilons):
+    print('\nGenerating adversarial data')
+    X_adv = make_jsma(model, image, epochs=30, eps=float(eps))
 
-print("Prediction on adversarial data= ", test_acc * 100)
-img_plot(X_adv[:10], pred)
+    print('\nEvaluating on adversarial data')
+    pred = np.argmax(model.predict(X_adv), axis=1)
+    label = np.argmax(y_test[:20], axis=1)
+    test_acc = accuracy_score(pred, label)
+
+    print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)
+    img_plot(X_adv[:10], pred)

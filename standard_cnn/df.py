@@ -12,7 +12,11 @@ from timeit import default_timer
 import matplotlib.pyplot as plt
 from keras import backend as K
 
+
 maxTime = 0
+
+def safe_norm(x, epsilon=1e-12, axis=None):
+  return tf.sqrt(tf.reduce_sum(x ** 2, axis=axis) + epsilon)
 
 
 def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
@@ -179,7 +183,8 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
 
         a = tf.abs(yo - yk)
         b = go - gk
-        c = tf.norm(tensor=b, axis=1)
+        c = safe_norm(b, axis=1)
+        print('c-', c)
         score = a / c
         ind = tf.argmin(input=score)
 
@@ -193,7 +198,7 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     _, noise = tf.nest.map_structure(tf.stop_gradient,
                                      tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
                                                    name='_deepfoolx'))
-    # print('Noise from deepfool', noise)
+    # print('Noise from deepfool - ', noise)
     return noise
 
 
@@ -250,7 +255,7 @@ def _deepfoolx_batch(model, x, epochs, eta, clip_min, clip_max):
     return noise
 
 
-def make_deepfool(model, X_data, epochs=1, eps=0.01, batch_size=128):
+def make_deepfool(model, X_data, epochs=1, eta=0.01, batch_size=128):
     print('\nMaking adversarials via DeepFool')
     global maxTime
 
@@ -265,7 +270,7 @@ def make_deepfool(model, X_data, epochs=1, eps=0.01, batch_size=128):
         tick = time.perf_counter()
         # adv = sess.run(env.xadv, feed_dict={env.x: X_data[start:end],
         #         #                                     env.adv_epochs: epochs})
-        adv = deepfool(model, X_data[start:end], epochs=epochs)
+        adv = deepfool(model, X_data[start:end], epochs=epochs, eta=eta)
         tock = time.perf_counter()
         maxTime = max(maxTime, (tock - tick))
         X_adv[start:end] = adv
@@ -274,7 +279,7 @@ def make_deepfool(model, X_data, epochs=1, eps=0.01, batch_size=128):
     return X_adv
 
 
-def img_plot(images, labels):
+def img_plot(images, labels, epsilon):
     num = images.shape[0]
     num_row = 2
     num_col = 5
@@ -284,24 +289,9 @@ def img_plot(images, labels):
         ax = axes[i // num_col, i % num_col]
         ax.imshow(images[i], cmap='gray')
         ax.set_title("Prediction = " + str(labels[i]))
-    plt.get_current_fig_manager().set_window_title("Deepfool")
+    plt.get_current_fig_manager().set_window_title("Epsilon = " + str(epsilon))
     plt.tight_layout()
     plt.show()
-
-def img_plot(images, labels):
-    num = images.shape[0]
-    num_row = 2
-    num_col = 5
-    # plot images
-    fig, axes = plt.subplots(num_row, num_col, figsize=(1.5 * num_col, 2 * num_row))
-    for i in range(num):
-        ax = axes[i // num_col, i % num_col]
-        ax.imshow(images[i], cmap='gray')
-        ax.set_title("Prediction = " + str(labels[i]))
-    plt.get_current_fig_manager().set_window_title("Deepfool")
-    plt.tight_layout()
-    plt.show()
-
 
 
 # the path to the saved model
@@ -321,6 +311,7 @@ x_test = x_test.astype('float32') / 255
 
 # set number of categories
 num_category = 10
+
 # convert class vectors to binary class matrices
 y_train = to_categorical(y_train, num_category)
 y_test = to_categorical(y_test, num_category)
@@ -329,15 +320,16 @@ y_test = to_categorical(y_test, num_category)
 image = x_test[:20]
 label = y_test[:20]
 
-print('\nGenerating adversarial data')
-X_adv = make_deepfool(model, image, epochs=1)
+epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
-print('\nEvaluating on adversarial data')
-print(model(X_adv))
-pred = np.argmax(model.predict(X_adv), axis=1)
-label = np.argmax(y_test[:20], axis=1)
-test_acc = accuracy_score(pred, label)
-print(pred)
+for i, eps in enumerate(epsilons):
+    print('\nGenerating adversarial data')
+    X_adv = make_deepfool(model, image, epochs=0, eta=eps)
 
-print("Prediction on adversarial data= ", test_acc * 100)
-img_plot(X_adv[:10], pred)
+    print('\nEvaluating on adversarial data')
+    pred = np.argmax(model.predict(X_adv), axis=1)
+    label = np.argmax(y_test[:20], axis=1)
+    test_acc = accuracy_score(pred, label)
+
+    print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)
+    img_plot(X_adv[:10], pred, eps)

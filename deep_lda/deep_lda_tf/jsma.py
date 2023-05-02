@@ -453,21 +453,24 @@ image = x_test[:20]
 label = y_test[:20]
 
 
-print('\nGenerating adversarial data')\
-# X_adv = make_jsma(sess, env, X_test, epochs=30, eps=3)
-X_adv = make_jsma(model, image, epochs=30, eps=1.0)
-
 get_flatten_layer_output = K.function(
   [model.layers[0].input], # param 1 will be treated as layer[0].output
   [model.get_layer('flatten').output]) # and this function will return output from flatten layer
 
-print('\nEvaluating on adversarial data')
-X_adv_new = get_flatten_layer_output(X_adv)[0]
+epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
-[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], X_adv_new, label)
+for i, eps in enumerate(epsilons):
+    print('\nGenerating adversarial data') \
+        # X_adv = make_cw(sess, env, X_test, epochs=30, eps=3)
+    X_adv = make_jsma(model, image, epochs=30, eps=eps)
 
-print("Prediction on adversarial data= ", test_acc * 100)
-img_plot(X_adv[:10], pred)
+    print('\nEvaluating on adversarial data')
+    X_adv_new = get_flatten_layer_output(X_adv)[0]
+
+    [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], X_adv_new, label)
+
+    print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)
+    img_plot(X_adv[:10], pred)
 
 # print(len(X_adv))
 

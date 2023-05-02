@@ -1,6 +1,3 @@
-# from keras.layers import Dense
-# from keras.models import Sequential
-# from keras.regularizers import l2
 import tensorflow as tf
 from tensorflow import keras
 
@@ -55,8 +52,8 @@ def create_model(batch_size = BATCH_SIZE):
     net = tf.keras.layers.BatchNormalization()(net)
     net = tf.keras.layers.GlobalAveragePooling2D()(net)
     net = tf.keras.layers.Flatten()(net)
-    l_out= tf.keras.layers.Dense(10, activation='softmax')(net)
-    # l_out = tf.keras.layers.Softmax()(net)
+    net = tf.keras.layers.Dense(10)(net)
+    l_out = tf.keras.layers.Softmax()(net)
 
     model_built = tf.keras.Model(l_in, l_out)
     print(model_built.summary())
