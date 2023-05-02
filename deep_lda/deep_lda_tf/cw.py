@@ -184,7 +184,7 @@ class Timer(object):
             return (self.end - self.start) * self.factor
 
 
-def img_plot(images, labels):
+def img_plot(images, epsilon, labels):
     num = images.shape[0]
     num_row = 2
     num_col = 5
@@ -194,9 +194,10 @@ def img_plot(images, labels):
         ax = axes[i // num_col, i % num_col]
         ax.imshow(images[i], cmap='gray')
         ax.set_title("Prediction = " + str(labels[i]))
-    plt.get_current_fig_manager().set_window_title("Carlini and Wagner")
+    plt.get_current_fig_manager().set_window_title("CW (epsilon= " + str(epsilon) + ")")
     plt.tight_layout()
     plt.show()
+
 
 def make_cw(model, X_data, epochs=1, eps=0.1, batch_size=batch_size):
     """
@@ -227,7 +228,7 @@ def make_cw(model, X_data, epochs=1, eps=0.1, batch_size=batch_size):
 
             for epoch in range(epochs):
                 # env.sess.run(env.adv_train_op, feed_dict=feed_dict)
-                adv_train_op, xadv, noise = cw(model, noise, tf.convert_to_tensor(X_data[start:end]), y=5, eps=eps)
+                adv_train_op, xadv, noise = cw(model, noise, tf.convert_to_tensor(X_data[start:end]), eps=eps)
             # env.adv_train_op, env.xadv, env.noise = cw(model, env.x_fixed, ord_='inf',y=env.adv_y, eps=env.adv_eps, optimizer=optimizer)
 
             # xadv = env.sess.run(env.xadv, feed_dict=feed_dict)
@@ -271,7 +272,7 @@ num_category = 10
 image = x_test[:20]
 label = y_test[:20]
 
-epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
+epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3, 1.0, 2.0, 3.0]
 
 get_flatten_layer_output = K.function(
   [model.layers[0].input], # param 1 will be treated as layer[0].output
@@ -282,8 +283,7 @@ print('\nEvaluating on original data')
 print("Prediction on original data= ", test_acc * 100)
 
 for i, eps in enumerate(epsilons):
-  print('\nGenerating adversarial data')\
-  # X_adv = make_cw(sess, env, X_test, epochs=30, eps=3)
+  print('\nGenerating adversarial data')
   X_adv = make_cw(model, image, epochs=30, eps=eps)
 
   print('\nEvaluating on adversarial data')
@@ -292,5 +292,5 @@ for i, eps in enumerate(epsilons):
   [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], X_adv_new, label)
 
   print("Prediction on adversarial data (eps = " + str(eps)+")= ", test_acc * 100)
-  img_plot(X_adv[:10], pred)
+  img_plot(X_adv[:10], eps, pred)
 

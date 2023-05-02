@@ -96,7 +96,6 @@ def _jsma_impl(model, x, yind, epochs, eps1, clip_min, clip_max, score_fn):
 
         # find the pixel with the highest saliency score
         ind = tf.argmax(score, axis=1)
-        eps = tf.to_float
         dx = tf.one_hot(ind, dim, on_value=eps1, off_value=0.0)
         dx = tf.reshape(dx, [-1] + shape[1:])
 
@@ -186,7 +185,7 @@ def make_jsma(model, X_data, epochs=0.2, eps=1.0, batch_size=128):
     return X_adv
 
 
-def img_plot(images, labels):
+def img_plot(images, epsilon, labels):
     num = images.shape[0]
     num_row = 2
     num_col = 5
@@ -196,7 +195,7 @@ def img_plot(images, labels):
         ax = axes[i // num_col, i % num_col]
         ax.imshow(images[i], cmap='gray')
         ax.set_title("Prediction = " + str(labels[i]))
-    plt.get_current_fig_manager().set_window_title("JSMA")
+    plt.get_current_fig_manager().set_window_title("JSMA (epsilon= " + str(epsilon) + ")")
     plt.tight_layout()
     plt.show()
 
@@ -238,4 +237,4 @@ for i, eps in enumerate(epsilons):
     test_acc = accuracy_score(pred, label)
 
     print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)
-    img_plot(X_adv[:10], pred)
+    img_plot(X_adv[:10], eps, pred)

@@ -74,6 +74,10 @@ get_flatten_layer_output = K.function(
         [model.layers[0].input],  # param 1 will be treated as layer[0].output
         [model.get_layer('flatten').output])  # and this function will return output from flatten layer
 
+print('\nEvaluating on original data')
+[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], x_test_new[:20], y_test_new[:20])
+print("Prediction on original data= ", test_acc * 100)
+
 def img_plot(images, epsilon, labels):
     num = images.shape[0]
     num_row = 2
@@ -84,7 +88,7 @@ def img_plot(images, epsilon, labels):
         ax = axes[i // num_col, i % num_col]
         ax.imshow(images[i], cmap='gray')
         ax.set_title("Prediction = " + str(labels[i]))
-    plt.get_current_fig_manager().set_window_title("Epsilon= " + str(epsilon))
+    plt.get_current_fig_manager().set_window_title("FGSM (epsilon= " + str(epsilon) + ")")
     plt.tight_layout()
     plt.show()
 

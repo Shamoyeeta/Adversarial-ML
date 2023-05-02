@@ -188,7 +188,7 @@ class Timer(object):
             return (self.end - self.start) * self.factor
 
 
-def img_plot(images, labels):
+def img_plot(images, epsilon, labels):
     num = images.shape[0]
     num_row = 2
     num_col = 5
@@ -198,9 +198,10 @@ def img_plot(images, labels):
         ax = axes[i // num_col, i % num_col]
         ax.imshow(images[i], cmap='gray')
         ax.set_title("Prediction = " + str(labels[i]))
-    plt.get_current_fig_manager().set_window_title("Carlini and Wagner")
+    plt.get_current_fig_manager().set_window_title("CW (epsilon= " + str(epsilon) + ")")
     plt.tight_layout()
     plt.show()
+
 
 def make_cw(model, X_data, epochs=1, eps=0.1, batch_size=batch_size):
     """
@@ -269,7 +270,7 @@ label = y_test[:20]
 epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
 for i, eps in enumerate(epsilons):
-  print('\nGenerating adversarial data')\
+  print('\nGenerating adversarial data')
   # X_adv = make_cw(sess, env, X_test, epochs=30, eps=3)
   X_adv = make_cw(model, image, epochs=0, eps=eps)
 
@@ -279,4 +280,4 @@ for i, eps in enumerate(epsilons):
   test_acc = accuracy_score(pred, label)
 
   print("Prediction on adversarial data (eps = " + str(eps)+")= ", test_acc * 100)
-  img_plot(X_adv[:10], pred)
+  img_plot(X_adv[:10], eps, pred)

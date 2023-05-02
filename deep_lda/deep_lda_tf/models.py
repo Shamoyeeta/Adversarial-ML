@@ -4,9 +4,7 @@
 import tensorflow as tf
 from tensorflow import keras
 
-BATCH_SIZE = 1000
-
-def create_model(batch_size = BATCH_SIZE):
+def create_model(batch_size = 200):
     """
     Builds the model
     The structure of the model can get easily substituted with a more efficient and powerful network like CNN

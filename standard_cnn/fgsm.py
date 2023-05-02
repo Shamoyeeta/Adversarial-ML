@@ -16,9 +16,10 @@ def img_plot(images, epsilon, labels):
         ax = axes[i // num_col, i % num_col]
         ax.imshow(images[i], cmap='gray')
         ax.set_title("Prediction = " + str(labels[i]))
-    plt.get_current_fig_manager().set_window_title("Epsilon= " + str(epsilon))
+    plt.get_current_fig_manager().set_window_title("FGSM (epsilon= " + str(epsilon) + ")")
     plt.tight_layout()
     plt.show()
+
 
 
 

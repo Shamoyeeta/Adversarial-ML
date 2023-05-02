@@ -18,6 +18,9 @@ import time
 
 maxTime = 0
 
+def safe_norm(x, epsilon=1e-12, axis=None):
+  return tf.sqrt(tf.reduce_sum(x ** 2, axis=axis) + epsilon)
+
 
 def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
              clip_min=0.0, clip_max=1.0, min_prob=0.0):
@@ -184,7 +187,8 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
         a = tf.abs(yo - yk)
         b = go - gk
         c = tf.norm(tensor=b, axis=1)
-        print('c-', c)
+        if not tf.reduce_sum(tf.abs(c).numpy()) > 0:
+            c = safe_norm(b, axis=1)
         score = a / c
         ind = tf.argmin(input=score)
 
@@ -279,7 +283,7 @@ def make_deepfool(model, X_data, epochs=1, eta=0.01, batch_size=128):
     return X_adv
 
 
-def img_plot(images, labels, epsilon):
+def img_plot(images, epsilon, labels):
     num = images.shape[0]
     num_row = 2
     num_col = 5
@@ -289,9 +293,10 @@ def img_plot(images, labels, epsilon):
         ax = axes[i // num_col, i % num_col]
         ax.imshow(images[i], cmap='gray')
         ax.set_title("Prediction = " + str(labels[i]))
-    plt.get_current_fig_manager().set_window_title("Epsilon = " + str(epsilon))
+    plt.get_current_fig_manager().set_window_title("Deepfool (epsilon= " + str(epsilon) + ")")
     plt.tight_layout()
     plt.show()
+
 
 
 loss_object = lda_loss()
@@ -333,6 +338,10 @@ get_flatten_layer_output = K.function(
   [model.layers[0].input], # param 1 will be treated as layer[0].output
   [model.get_layer('flatten').output]) # and this function will return output from flatten layer
 
+print('\nEvaluating on original data')
+[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], x_test_new[:20], y_test_new[:20])
+print("Prediction on original data= ", test_acc * 100)
+
 epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
 for i, eps in enumerate(epsilons):
@@ -345,6 +354,6 @@ for i, eps in enumerate(epsilons):
   [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], X_adv_new, label)
 
   print("Prediction on adversarial data (eps = " + str(eps)+")= ", test_acc * 100)
-  img_plot(X_adv[:10], pred, eps)
+  img_plot(X_adv[:10], eps, pred)
 
 

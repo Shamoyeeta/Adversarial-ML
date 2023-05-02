@@ -403,7 +403,7 @@ def make_jsma(model, X_data, epochs=0.2, eps=1.0, batch_size=128):
 #
 # evaluate(sess, env, X_test, y_test)
 
-def img_plot(images, labels):
+def img_plot(images, epsilon, labels):
     num = images.shape[0]
     num_row = 2
     num_col = 5
@@ -413,9 +413,10 @@ def img_plot(images, labels):
         ax = axes[i // num_col, i % num_col]
         ax.imshow(images[i], cmap='gray')
         ax.set_title("Prediction = " + str(labels[i]))
-    plt.get_current_fig_manager().set_window_title("JSMA")
+    plt.get_current_fig_manager().set_window_title("JSMA (epsilon= " + str(epsilon) + ")")
     plt.tight_layout()
     plt.show()
+
 
 
 loss_object = lda_loss()
@@ -457,6 +458,10 @@ get_flatten_layer_output = K.function(
   [model.layers[0].input], # param 1 will be treated as layer[0].output
   [model.get_layer('flatten').output]) # and this function will return output from flatten layer
 
+print('\nEvaluating on original data')
+[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], x_test_new[:20], y_test_new[:20])
+print("Prediction on original data= ", test_acc * 100)
+
 epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
 for i, eps in enumerate(epsilons):
@@ -470,7 +475,7 @@ for i, eps in enumerate(epsilons):
     [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], X_adv_new, label)
 
     print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)
-    img_plot(X_adv[:10], pred)
+    img_plot(X_adv[:10], eps, pred)
 
 # print(len(X_adv))
 
