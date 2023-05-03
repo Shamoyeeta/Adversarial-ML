@@ -183,9 +183,11 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
 
         a = tf.abs(yo - yk)
         b = go - gk
+        print('b-', b)
         c = tf.norm(b, axis=1)
         if not tf.reduce_sum(tf.abs(c).numpy()) > 0:
             c = safe_norm(b, axis=1)
+
         score = a / c
         ind = tf.argmin(input=score)
 
@@ -307,8 +309,6 @@ def img_plot(images, epsilon, labels):
     plt.get_current_fig_manager().set_window_title("Deepfool (epsilon= " + str(epsilon) + ")")
     plt.tight_layout()
     plt.show()
-
-
 
 
 # the path to the saved model

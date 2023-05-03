@@ -171,7 +171,7 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
         # print('ycopy - ', ycopy)
         # Hypothesis: equal number of samples (Ni) for each class
         Xg = Xcopy[ycopy == i]  # [None, d]
-        print('Xg - ', Xg)
+        # print('Xg - ', Xg)
         Xg_bar = Xg - tf.reduce_mean(Xg, axis=0, keepdims=True)  # [None, d]
         m = tf.cast(tf.shape(Xg_bar)[0], tf.float32)  # []
         Xg_bar_dummy_batch = tf.expand_dims(Xg_bar, axis=0)  # [1, None, d]
@@ -218,12 +218,12 @@ class lda_loss(keras.losses.Loss):
         super().__init__(name=name)
 
     def call(self, y_true, y_pred):
-        print("In linear_discriminative_loss()")
-        print('y_true ', y_true)
-        print('y_pred ', y_pred)
+        # print("In linear_discriminative_loss()")
+        # print('y_true ', y_true)
+        # print('y_pred ', y_pred)
         eigvals = linear_discriminative_eigvals(y_true, y_pred)  # [cls]
 
-        print("Eigvals- ", eigvals)
+        # print("Eigvals- ", eigvals)
 
         # At most cls - 1 non-zero eigenvalues
         classes = tf.raw_ops.UniqueV2(x=y_true, axis=[0]).y  # [cls]
@@ -235,5 +235,5 @@ class lda_loss(keras.losses.Loss):
         top_k_eigvals = eigvals[eigvals <= thresh]  # [None]
         costs = -tf.reduce_mean(top_k_eigvals)  # []
 
-        print("Costs- ", costs)
+        # print("Costs- ", costs)
         return costs

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 from objectives import lda_loss
+from models import get_flatten_layer_output
 from keras.datasets import mnist
 from keras.optimizers import Adam
 from keras import backend as K
@@ -453,11 +454,6 @@ num_category = 10
 image = x_test[:20]
 label = y_test[:20]
 
-
-get_flatten_layer_output = K.function(
-  [model.layers[0].input], # param 1 will be treated as layer[0].output
-  [model.get_layer('flatten').output]) # and this function will return output from flatten layer
-
 print('\nEvaluating on original data')
 [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], x_test_new[:20], y_test_new[:20])
 print("Prediction on original data= ", test_acc * 100)
@@ -470,7 +466,7 @@ for i, eps in enumerate(epsilons):
     X_adv = make_jsma(model, image, epochs=30, eps=eps)
 
     print('\nEvaluating on adversarial data')
-    X_adv_new = get_flatten_layer_output(X_adv)[0]
+    X_adv_new = get_flatten_layer_output(model, X_adv)
 
     [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new[:20], X_adv_new, label)
 

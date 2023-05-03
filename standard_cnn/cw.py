@@ -218,14 +218,6 @@ def make_cw(model, X_data, epochs=1, eps=0.1, batch_size=batch_size):
         with Timer('Batch {0}/{1}   '.format(batch + 1, n_batch)):
             end = min(n_sample, (batch + 1) * batch_size)
             start = end - batch_size
-            # feed_dict = {
-            #     env.x_fixed: X_data[start:end],
-            #     env.adv_eps: eps,
-            #     # env.adv_y: np.random.choice(n_classes)
-            #     env.adv_y: 5
-            # }
-
-            # env.sess.run(env.noise.initializer)
             xshape = X_data.shape
             noise_initializer = tf.zeros_initializer()
             noise = tf.Variable(noise_initializer(xshape, dtype=tf.float32), dtype=tf.float32, name='noise', trainable=True)
