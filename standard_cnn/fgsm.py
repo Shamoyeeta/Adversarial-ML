@@ -60,8 +60,8 @@ y_train = to_categorical(y_train, num_category)
 y_test = to_categorical(y_test, num_category)
 
 # Get image and its label
-image = x_test[:20]
-label = y_test[:20]
+image = x_test
+label = y_test
 
 perturbations = create_adversarial_pattern(image, label)
 # # visualize the perturbations
