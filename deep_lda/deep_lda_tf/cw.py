@@ -13,7 +13,7 @@ from keras.optimizers import Adam
 from objectives import lda_loss
 from svm import svm_classify
 from scipy.special import softmax
-from models import get_flatten_layer_output
+from models import get_flatten_layer_output, get_logit_layer_output
 
 def cw(model, noise, x, y=None, eps=1.0, ord_=2, T=2,
        optimizer=Adam(learning_rate=0.1), alpha=0.9,
@@ -78,8 +78,10 @@ def cw(model, noise, x, y=None, eps=1.0, ord_=2, T=2,
         xadv = xadv * (clip[1] - clip[0]) + clip[0] # 2
 
         # ybar, logits = model(xadv, logits=True)
-        logits = model(xadv)
-        ybar = softmax(logits, axis=1)
+        logits = tf.convert_to_tensor(get_logit_layer_output(model, xadv), dtype=tf.float32)
+        print(logits)
+        ybar = model(xadv)
+        print(ybar)
         ydim = ybar.shape[1]
 
         if y is not None:
@@ -269,8 +271,8 @@ x_test = x_test.astype('float32') / 255
 # set number of categories
 num_category = 10
 
-image = x_test
-label = y_test
+image = x_test[:20]
+label = y_test[:20]
 
 epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 

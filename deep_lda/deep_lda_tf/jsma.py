@@ -451,14 +451,14 @@ x_test = x_test.astype('float32') / 255
 # set number of categories
 num_category = 10
 
-image = x_test 
-label = y_test 
+image = x_test[:20]
+label = y_test[:20]
 
 print('\nEvaluating on original data')
 [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new , x_test_new , y_test_new )
 print("Prediction on original data= ", test_acc * 100)
 
-epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
+epsilons = [0.0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
 for i, eps in enumerate(epsilons):
     print('\nGenerating adversarial data') \

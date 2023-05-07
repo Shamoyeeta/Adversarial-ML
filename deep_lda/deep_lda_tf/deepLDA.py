@@ -23,7 +23,7 @@ if __name__ == '__main__':
     outdim_size = 10
 
     # the parameters for training the network
-    epoch_num = 100
+    epoch_num = 2 #100
     batch_size = 500
 
     # The margin and n_components (number of components) parameter used in the loss function
@@ -59,15 +59,6 @@ if __name__ == '__main__':
 
     print('History- ', history.history)
 
-    # get_flatten_layer_output = K.function(
-    #     [model.layers[0].input],  # param 1 will be treated as layer[0].output
-    #     [model.get_layer('flatten').output])  # and this function will return output from flatten layer
-
-    # x_train_new = get_flatten_layer_output(x_train[:20])[0]
-    # x_test_new = get_flatten_layer_output(x_test[:20])[0]
-    #
-    # print(x_test_new.shape)
-    # print(x_train_new.shape)
     x_train_new = get_flatten_layer_output(model, x_train)
     x_test_new = get_flatten_layer_output(model, x_test)
 

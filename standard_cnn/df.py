@@ -1,4 +1,3 @@
-
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from keras.losses import CategoricalCrossentropy
@@ -14,9 +13,14 @@ import matplotlib.pyplot as plt
 from keras import backend as K
 
 maxTime = 0
+indexes = []
+image_count = 0
+
+
 
 def safe_norm(x, epsilon=1e-12, axis=None):
-  return tf.sqrt(tf.reduce_sum(x ** 2, axis=axis) + epsilon)
+    return tf.sqrt(tf.reduce_sum(x ** 2, axis=axis) + epsilon)
+
 
 def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
              clip_min=0.0, clip_max=1.0, min_prob=0.0):
@@ -38,6 +42,8 @@ def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
     :param min_prob: Minimum probability for adversarial samples.
     :return: Adversarials, of the same shape as x.
     """
+    global image_count
+    image_count = 0
     print('Eta = ', eta)
     y = tf.stop_gradient(model(x))
 
@@ -140,6 +146,9 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     """DeepFool for multi-class classifiers.
     Assumes that the final label is the label with the maximum values.
     """
+    global indexes
+    global image_count
+
     y0 = tf.stop_gradient(model(x))
     y0 = tf.reshape(y0, [-1])
     k0 = tf.argmax(input=y0)
@@ -163,10 +172,11 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(xadv)
             y = model(xadv)
+            # y = get_logit_layer_output(model, xadv)
 
-        # print(ydim)
+        # print(y)
 
-        gs = [tf.reshape(tape.gradient(y, xadv), [-1])
+        gs = [tf.reshape(tape.gradient(y[i], xadv), [-1])
               for i in range(ydim)]
         del tape
         g = tf.stack(gs, axis=0)
@@ -183,11 +193,11 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
 
         a = tf.abs(yo - yk)
         b = go - gk
-        print('b-', b)
-        c = tf.norm(b, axis=1)
+        c = tf.norm(tensor=b, axis=1)
         if not tf.reduce_sum(tf.abs(c).numpy()) > 0:
             c = safe_norm(b, axis=1)
 
+        # print(c)
         score = a / c
         ind = tf.argmin(input=score)
 
@@ -201,7 +211,11 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     _, noise = tf.nest.map_structure(tf.stop_gradient,
                                      tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
                                                    name='_deepfoolx'))
-    # print('Noise from deepfool', noise)
+    if tf.reduce_sum(tf.abs(noise).numpy()) > 0:
+        indexes.append(image_count)
+        print('Noise from deepfool for image : ', image_count)
+
+    image_count += 1
     return noise
 
 
@@ -296,6 +310,7 @@ def img_plot(images, labels):
     plt.tight_layout()
     plt.show()
 
+
 def img_plot(images, epsilon, labels):
     num = images.shape[0]
     num_row = 2
@@ -339,14 +354,14 @@ label = y_test[:20]
 epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
 for i, eps in enumerate(epsilons):
-  print('\nGenerating adversarial data')
-  # X_adv = make_cw(sess, env, X_test, epochs=30, eps=3)
-  X_adv = make_deepfool(model, image, epochs=3, eps=eps)
+    print('\nGenerating adversarial data')
+    # X_adv = make_cw(sess, env, X_test, epochs=30, eps=3)
+    X_adv = make_deepfool(model, image, epochs=3, eps=eps)
 
-  print('\nEvaluating on adversarial data')
-  pred = np.argmax(model.predict(X_adv), axis=1)
-  label = np.argmax(y_test[:20], axis=1)
-  test_acc = accuracy_score(pred, label)
+    print('\nEvaluating on adversarial data')
+    pred = np.argmax(model.predict(X_adv), axis=1)
+    label = np.argmax(y_test[:20], axis=1)
+    test_acc = accuracy_score(pred, label)
 
-  print("Prediction on adversarial data (eps = " + str(eps)+")= ", test_acc * 100)
-  img_plot(X_adv[:10], eps, pred)
+    print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)
+    img_plot(X_adv[:10], eps, pred)

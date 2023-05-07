@@ -56,7 +56,8 @@ def create_model(batch_size=400):
     net = tf.keras.layers.BatchNormalization()(net)
     net = tf.keras.layers.GlobalAveragePooling2D()(net)
     net = tf.keras.layers.Flatten()(net)
-    l_out = tf.keras.layers.Dense(10)(net)
+    net = tf.keras.layers.Dense(10)(net)
+    l_out = tf.keras.layers.Softmax()(net)
 
     model_built = tf.keras.Model(l_in, l_out)
     print(model_built.summary())
@@ -79,3 +80,20 @@ def get_flatten_layer_output(model, x, batch_size=400):
         feature_vector = flatten_layer_output(x[start:end])
         flatten_output[start:end] = feature_vector[0]
     return flatten_output
+def get_logit_layer_output(model, x, batch_size=400):
+    logit_layer_output = K.function(
+        [model.layers[0].input],  # param 1 will be treated as layer[0].output
+        [model.get_layer('dense').output])  # and this function will return output from dense layer
+
+    n_sample = x.shape[0]
+    n_batch = int((n_sample + batch_size - 1) / batch_size)
+    flatten_output = np.empty([n_sample, 10])
+
+    for batch in range(n_batch):
+        print(' batch {0}/{1}'.format(batch + 1, n_batch), end='\r')
+        start = batch * batch_size
+        end = min(n_sample, start + batch_size)
+        logits = logit_layer_output(x[start:end])
+        flatten_output[start:end] = logits[0]
+    return flatten_output
+

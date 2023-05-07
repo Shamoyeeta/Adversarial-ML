@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 from objectives import lda_loss
-from models import get_flatten_layer_output
+from models import get_flatten_layer_output, get_logit_layer_output
 from keras.datasets import mnist
 from keras.optimizers import Adam
 from keras import backend as K
@@ -16,11 +16,11 @@ from svm import svm_classify
 from keras.utils import to_categorical
 import time
 
-
 maxTime = 0
 
+
 def safe_norm(x, epsilon=1e-12, axis=None):
-  return tf.sqrt(tf.reduce_sum(x ** 2, axis=axis) + epsilon)
+    return tf.sqrt(tf.reduce_sum(x ** 2, axis=axis) + epsilon)
 
 
 def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
@@ -140,10 +140,19 @@ def _deepfool2_batch(model, x, epochs, eta, clip_min, clip_max):
     return noise
 
 
+indexes = []
+image_count = 0
+
+
 def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     """DeepFool for multi-class classifiers.
     Assumes that the final label is the label with the maximum values.
     """
+    global indexes
+    global image_count
+
+    image_count += 1
+
     y0 = tf.stop_gradient(model(x))
     y0 = tf.reshape(y0, [-1])
     k0 = tf.argmax(input=y0)
@@ -167,8 +176,9 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(xadv)
             y = model(xadv)
+            # y = get_logit_layer_output(model, xadv)
 
-        # print(ydim)
+        # print(y)
 
         gs = [tf.reshape(tape.gradient(y, xadv), [-1])
               for i in range(ydim)]
@@ -190,6 +200,8 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
         c = tf.norm(tensor=b, axis=1)
         if not tf.reduce_sum(tf.abs(c).numpy()) > 0:
             c = safe_norm(b, axis=1)
+
+        # print(c)
         score = a / c
         ind = tf.argmin(input=score)
 
@@ -203,7 +215,9 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     _, noise = tf.nest.map_structure(tf.stop_gradient,
                                      tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
                                                    name='_deepfoolx'))
-    # print('Noise from deepfool', noise)
+    if tf.reduce_sum(tf.abs(noise).numpy()) > 0:
+        indexes.append(image_count)
+        print('Noise from deepfool for image : ', image_count)
     return noise
 
 
@@ -299,7 +313,6 @@ def img_plot(images, epsilon, labels):
     plt.show()
 
 
-
 loss_object = lda_loss()
 
 # the path to the final learned features
@@ -331,25 +344,23 @@ x_test = x_test.astype('float32') / 255
 # set number of categories
 num_category = 10
 
-image = x_test 
-label = y_test 
+image = x_test[:20]
+label = y_test[:20]
 
 print('\nEvaluating on original data')
-[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new , x_test_new , y_test_new )
+[train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, x_test_new, y_test_new)
 print("Prediction on original data= ", test_acc * 100)
 
 epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
 for i, eps in enumerate(epsilons):
-  print('\nGenerating adversarial data')
-  X_adv = make_deepfool(model, image, epochs=30, eta=eps)
+    print('\nGenerating adversarial data')
+    X_adv = make_deepfool(model, image, epochs=30, eta=eps)
 
-  print('\nEvaluating on adversarial data')
-  X_adv_new = get_flatten_layer_output(model, X_adv)
+    print('\nEvaluating on adversarial data')
+    X_adv_new = get_flatten_layer_output(model, X_adv)
 
-  [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new , X_adv_new, label)
+    [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, X_adv_new, label)
 
-  print("Prediction on adversarial data (eps = " + str(eps)+")= ", test_acc * 100)
-  img_plot(X_adv[:10], eps, pred)
-
-
+    print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)
+    img_plot(X_adv[:10], eps, pred)
