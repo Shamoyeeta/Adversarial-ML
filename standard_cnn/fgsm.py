@@ -75,7 +75,7 @@ for i, eps in enumerate(epsilons):
     adv_x = (image + (eps * perturbations)).numpy()
     adv_x = tf.clip_by_value(adv_x, -1, 1)
     pred = np.argmax(model.predict(adv_x), axis=1)
-    label = np.argmax(y_test[:20], axis=1)
+    label = np.argmax(y_test , axis=1)
     test_acc = accuracy_score(pred, label)
     print("New prediction on eps=" + str(eps) + " : ", test_acc*100)
     img_plot(adv_x[:10], eps, pred)

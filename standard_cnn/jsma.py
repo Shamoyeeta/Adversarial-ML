@@ -222,8 +222,8 @@ y_train = to_categorical(y_train, num_category)
 y_test = to_categorical(y_test, num_category)
 
 # Get image and its label
-image = x_test[:20]
-label = y_test[:20]
+image = x_test 
+label = y_test 
 
 epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
@@ -233,7 +233,7 @@ for i, eps in enumerate(epsilons):
 
     print('\nEvaluating on adversarial data')
     pred = np.argmax(model.predict(X_adv), axis=1)
-    label = np.argmax(y_test[:20], axis=1)
+    label = np.argmax(y_test , axis=1)
     test_acc = accuracy_score(pred, label)
 
     print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)

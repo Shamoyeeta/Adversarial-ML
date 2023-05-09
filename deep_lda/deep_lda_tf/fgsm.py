@@ -38,6 +38,7 @@ def create_adversarial_pattern(input_image, input_label):
         tape.watch(input_image)
         prediction = model(input_image)
         loss = loss_object(input_label, prediction)
+    loss = loss_object(input_label, prediction)
 
     # Get the gradients of the loss w.r.t to the input image.
     gradient = tape.gradient(loss, input_image)
@@ -59,14 +60,14 @@ x_test = x_test.astype('float32') / 255
 # Get image and its label
 # sample = random.sample(range(0, 10000), 10)
 # sample = 1  # random.randint(0, 1000)
-image = x_test[:20]
-label = y_test[:20]
+image = x_test
+label = y_test
 
 perturbations = create_adversarial_pattern(image, label)
 # # visualize the perturbations
 # plt.imshow(perturbations[0] * 0.5 + 0.5);  # To change [-1, 1] to [0,1]
 
-epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
+epsilons = [0.0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 descriptions = [('Epsilon = {:0.3f}'.format(eps) if eps else 'Input')
                 for eps in epsilons]
 
