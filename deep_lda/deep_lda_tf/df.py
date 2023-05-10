@@ -19,10 +19,6 @@ import time
 maxTime = 0
 
 
-def safe_norm(x, epsilon=1e-12, axis=None):
-    return tf.sqrt(tf.reduce_sum(x ** 2, axis=axis) + epsilon)
-
-
 def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
              clip_min=0.0, clip_max=1.0, min_prob=0.0):
     """DeepFool implementation in Tensorflow.
@@ -66,7 +62,7 @@ def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
         delta = tf.nest.map_structure(tf.stop_gradient, tf.map_fn(_f, x, dtype=(tf.float32), name='deepfool'))
 
     if noise:
-        print('Noise - ', delta)
+        # print('Noise - ', delta)
         return delta
 
     xadv = tf.stop_gradient(x + delta * (1 + eta))
@@ -140,18 +136,11 @@ def _deepfool2_batch(model, x, epochs, eta, clip_min, clip_max):
     return noise
 
 
-indexes = []
-image_count = 0
-
-
 def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     """DeepFool for multi-class classifiers.
     Assumes that the final label is the label with the maximum values.
     """
-    global indexes
-    global image_count
 
-    image_count += 1
 
     y0 = tf.stop_gradient(model(x))
     y0 = tf.reshape(y0, [-1])
@@ -176,32 +165,33 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(xadv)
             y = model(xadv)
+            y = tf.reshape(y, [-1])
             # y = get_logit_layer_output(model, xadv)
 
-        # print(y)
+        # print('y-', y)
+        gs = tf.reshape(tape.jacobian(y, xadv), [10, -1])
 
-        gs = [tf.reshape(tape.gradient(y, xadv), [-1])
-              for i in range(ydim)]
         del tape
+        # print(tf.shape(gs))
         g = tf.stack(gs, axis=0)
-        y = tf.reshape(y, [-1])
         # print(y)
-        # print('gs -', gs)
-        # print('g - ', g)
+        # print('g - ', g.shape)
 
         yk, yo = y[k0], tf.concat((y[:k0], y[(k0 + 1):]), axis=0)
         gk, go = g[k0], tf.concat((g[:k0], g[(k0 + 1):]), axis=0)
 
+        # print('k0', k0)
+        #
+        # print('gk - ', gk)
+
         yo.set_shape(ydim - 1)
-        go.set_shape([ydim - 1, xflat])
+        # go.set_shape([ xflat-1, -1])
+        go = tf.reshape(go, [ydim- 1, -1])
 
         a = tf.abs(yo - yk)
         b = go - gk
         c = tf.norm(tensor=b, axis=1)
-        if not tf.reduce_sum(tf.abs(c).numpy()) > 0:
-            c = safe_norm(b, axis=1)
 
-        # print(c)
         score = a / c
         ind = tf.argmin(input=score)
 
@@ -215,9 +205,6 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     _, noise = tf.nest.map_structure(tf.stop_gradient,
                                      tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
                                                    name='_deepfoolx'))
-    if tf.reduce_sum(tf.abs(noise).numpy()) > 0:
-        indexes.append(image_count)
-        print('Noise from deepfool for image : ', image_count)
     return noise
 
 
@@ -241,9 +228,16 @@ def _deepfoolx_batch(model, x, epochs, eta, clip_min, clip_max):
 
     def _body(i, z):
         xadv = tf.clip_by_value(x + z * (1 + eta), clip_min, clip_max)
-        y = model(xadv)
 
-        h = tf.GradientTape(ys=y[:, i], xs=xadv)[0]
+        with tf.GradientTape(persistent=True) as tape:
+            tape.watch(xadv)
+            y = model(xadv)
+            y = tf.reshape(y, [-1])
+        h = tape.jacobian(y, xadv)
+
+        del tape
+
+        # h = tf.GradientTape(ys=y[:, i], xs=xadv)[0]
         gs = [h for i in range(ydim)]
         g = tf.stack(gs, axis=0)
         g = tf.transpose(a=g, perm=perm)
@@ -344,8 +338,8 @@ x_test = x_test.astype('float32') / 255
 # set number of categories
 num_category = 10
 
-image = x_test[:20]
-label = y_test[:20]
+image = x_test
+label = y_test
 
 print('\nEvaluating on original data')
 [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, x_test_new, y_test_new)
@@ -355,7 +349,7 @@ epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
 for i, eps in enumerate(epsilons):
     print('\nGenerating adversarial data')
-    X_adv = make_deepfool(model, image, epochs=30, eta=eps)
+    X_adv = make_deepfool(model, image, epochs=3, eta=eps)
 
     print('\nEvaluating on adversarial data')
     X_adv_new = get_flatten_layer_output(model, X_adv)

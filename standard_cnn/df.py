@@ -12,14 +12,8 @@ from timeit import default_timer
 import matplotlib.pyplot as plt
 from keras import backend as K
 
+
 maxTime = 0
-indexes = []
-image_count = 0
-
-
-
-def safe_norm(x, epsilon=1e-12, axis=None):
-    return tf.sqrt(tf.reduce_sum(x ** 2, axis=axis) + epsilon)
 
 
 def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
@@ -42,9 +36,6 @@ def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
     :param min_prob: Minimum probability for adversarial samples.
     :return: Adversarials, of the same shape as x.
     """
-    global image_count
-    image_count = 0
-    print('Eta = ', eta)
     y = tf.stop_gradient(model(x))
 
     fns = [[_deepfool2, _deepfool2_batch], [_deepfoolx, _deepfoolx_batch]]
@@ -68,7 +59,7 @@ def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
         delta = tf.nest.map_structure(tf.stop_gradient, tf.map_fn(_f, x, dtype=(tf.float32), name='deepfool'))
 
     if noise:
-        print('Noise - ', delta)
+        # print('Noise - ', delta)
         return delta
 
     xadv = tf.stop_gradient(x + delta * (1 + eta))
@@ -146,8 +137,7 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     """DeepFool for multi-class classifiers.
     Assumes that the final label is the label with the maximum values.
     """
-    global indexes
-    global image_count
+
 
     y0 = tf.stop_gradient(model(x))
     y0 = tf.reshape(y0, [-1])
@@ -172,32 +162,33 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(xadv)
             y = model(xadv)
+            y = tf.reshape(y, [-1])
             # y = get_logit_layer_output(model, xadv)
 
-        # print(y)
+        # print('y-', y)
+        gs = tf.reshape(tape.jacobian(y, xadv), [10, -1])
 
-        gs = [tf.reshape(tape.gradient(y[i], xadv), [-1])
-              for i in range(ydim)]
         del tape
+        # print(tf.shape(gs))
         g = tf.stack(gs, axis=0)
-        y = tf.reshape(y, [-1])
         # print(y)
-        # print('gs -', gs)
-        # print('g - ', g)
+        # print('g - ', g.shape)
 
         yk, yo = y[k0], tf.concat((y[:k0], y[(k0 + 1):]), axis=0)
         gk, go = g[k0], tf.concat((g[:k0], g[(k0 + 1):]), axis=0)
 
+        # print('k0', k0)
+        #
+        # print('gk - ', gk)
+
         yo.set_shape(ydim - 1)
-        go.set_shape([ydim - 1, xflat])
+        # go.set_shape([ xflat-1, -1])
+        go = tf.reshape(go, [ydim- 1, -1])
 
         a = tf.abs(yo - yk)
         b = go - gk
         c = tf.norm(tensor=b, axis=1)
-        if not tf.reduce_sum(tf.abs(c).numpy()) > 0:
-            c = safe_norm(b, axis=1)
 
-        # print(c)
         score = a / c
         ind = tf.argmin(input=score)
 
@@ -211,11 +202,6 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
     _, noise = tf.nest.map_structure(tf.stop_gradient,
                                      tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
                                                    name='_deepfoolx'))
-    if tf.reduce_sum(tf.abs(noise).numpy()) > 0:
-        indexes.append(image_count)
-        print('Noise from deepfool for image : ', image_count)
-
-    image_count += 1
     return noise
 
 
@@ -239,9 +225,16 @@ def _deepfoolx_batch(model, x, epochs, eta, clip_min, clip_max):
 
     def _body(i, z):
         xadv = tf.clip_by_value(x + z * (1 + eta), clip_min, clip_max)
-        y = model(xadv)
 
-        h = tf.GradientTape(ys=y[:, i], xs=xadv)[0]
+        with tf.GradientTape(persistent=True) as tape:
+            tape.watch(xadv)
+            y = model(xadv)
+            y = tf.reshape(y, [-1])
+        h = tape.jacobian(y, xadv)
+
+        del tape
+
+        # h = tf.GradientTape(ys=y[:, i], xs=xadv)[0]
         gs = [h for i in range(ydim)]
         g = tf.stack(gs, axis=0)
         g = tf.transpose(a=g, perm=perm)
@@ -348,8 +341,8 @@ y_train = to_categorical(y_train, num_category)
 y_test = to_categorical(y_test, num_category)
 
 # Get image and its label
-image = x_test[:20]
-label = y_test[:20]
+image = x_test
+label = y_test
 
 epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 
@@ -360,7 +353,7 @@ for i, eps in enumerate(epsilons):
 
     print('\nEvaluating on adversarial data')
     pred = np.argmax(model.predict(X_adv), axis=1)
-    label = np.argmax(y_test[:20], axis=1)
+    label = np.argmax(y_test, axis=1)
     test_acc = accuracy_score(pred, label)
 
     print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)

@@ -38,7 +38,6 @@ def create_adversarial_pattern(input_image, input_label):
         tape.watch(input_image)
         prediction = model(input_image)
         loss = loss_object(input_label, prediction)
-    loss = loss_object(input_label, prediction)
 
     # Get the gradients of the loss w.r.t to the input image.
     gradient = tape.gradient(loss, input_image)
