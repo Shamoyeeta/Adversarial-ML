@@ -16,6 +16,7 @@ from keras import backend as K
 maxTime = 0
 
 
+@tf.function
 def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
              clip_min=0.0, clip_max=1.0, min_prob=0.0):
     """DeepFool implementation in Tensorflow.
@@ -163,32 +164,22 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
             tape.watch(xadv)
             y = model(xadv)
             y = tf.reshape(y, [-1])
-            # y = get_logit_layer_output(model, xadv)
 
-        # print('y-', y)
         gs = tf.reshape(tape.jacobian(y, xadv), [10, -1])
-
         del tape
-        # print(tf.shape(gs))
+
         g = tf.stack(gs, axis=0)
-        # print(y)
-        # print('g - ', g.shape)
+
 
         yk, yo = y[k0], tf.concat((y[:k0], y[(k0 + 1):]), axis=0)
         gk, go = g[k0], tf.concat((g[:k0], g[(k0 + 1):]), axis=0)
 
-        # print('k0', k0)
-        #
-        # print('gk - ', gk)
-
         yo.set_shape(ydim - 1)
-        # go.set_shape([ xflat-1, -1])
         go = tf.reshape(go, [ydim- 1, -1])
 
         a = tf.abs(yo - yk)
         b = go - gk
         c = tf.norm(tensor=b, axis=1)
-
         score = a / c
         ind = tf.argmin(input=score)
 
@@ -265,7 +256,7 @@ def _deepfoolx_batch(model, x, epochs, eta, clip_min, clip_max):
     return noise
 
 
-def make_deepfool(model, X_data, epochs=1, eps=0.01, batch_size=128):
+def make_deepfool(model, X_data, epochs=1, eta=0.01, batch_size=128):
     print('\nMaking adversarials via DeepFool')
     global maxTime
 
@@ -280,7 +271,7 @@ def make_deepfool(model, X_data, epochs=1, eps=0.01, batch_size=128):
         tick = time.perf_counter()
         # adv = sess.run(env.xadv, feed_dict={env.x: X_data[start:end],
         #         #                                     env.adv_epochs: epochs})
-        adv = deepfool(model, X_data[start:end], epochs=epochs, eta=eps)
+        adv = deepfool(model, X_data[start:end], epochs=epochs, eta=eta)
         tock = time.perf_counter()
         maxTime = max(maxTime, (tock - tick))
         X_adv[start:end] = adv
