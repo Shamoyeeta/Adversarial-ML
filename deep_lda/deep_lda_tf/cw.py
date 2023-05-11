@@ -79,9 +79,9 @@ def cw(model, noise, x, y=None, eps=1.0, ord_=2, T=2,
 
         # ybar, logits = model(xadv, logits=True)
         logits = tf.convert_to_tensor(get_logit_layer_output(model, xadv), dtype=tf.float32)
-        print(logits)
+        # print(logits)
         ybar = model(xadv)
-        print(ybar)
+        # print(ybar)
         ydim = ybar.shape[1]
 
         if y is not None:
@@ -210,6 +210,7 @@ def make_cw(model, X_data, epochs=1, eps=0.1, batch_size=batch_size):
     n_sample = X_data.shape[0]
     n_batch = int((n_sample + batch_size - 1) / batch_size)
     X_adv = np.empty_like(X_data)
+    Noise = np.empty_like(X_data)
 
     # for batch in range(n_batch):
     for batch in range(n_batch):
@@ -224,7 +225,7 @@ def make_cw(model, X_data, epochs=1, eps=0.1, batch_size=batch_size):
             # }
 
             # env.sess.run(env.noise.initializer)
-            xshape = X_data.shape
+            xshape = X_data[start:end].shape
             noise_initializer = tf.zeros_initializer()
             noise = tf.Variable(noise_initializer(xshape, dtype=tf.float32), dtype=tf.float32, name='noise', trainable=True)
 
@@ -234,8 +235,9 @@ def make_cw(model, X_data, epochs=1, eps=0.1, batch_size=batch_size):
             # env.adv_train_op, env.xadv, env.noise = cw(model, env.x_fixed, ord_='inf',y=env.adv_y, eps=env.adv_eps, optimizer=optimizer)
 
             # xadv = env.sess.run(env.xadv, feed_dict=feed_dict)
-            train_op, xadv, noise = cw(model, noise, tf.convert_to_tensor(X_data[start:end]), y=5, eps=eps, ord_='inf')
+            train_op, xadv, noise = cw(model, noise, tf.convert_to_tensor(X_data[start:end]), eps=eps, ord_='inf')
             X_adv[start:end] = xadv
+            Noise[start:end] = noise
 
     return X_adv
 

@@ -212,27 +212,36 @@ def make_cw(model, X_data, epochs=1, eps=0.1, batch_size=batch_size):
     n_sample = X_data.shape[0]
     n_batch = int((n_sample + batch_size - 1) / batch_size)
     X_adv = np.empty_like(X_data)
+    Noise = np.empty_like(X_data)
 
     # for batch in range(n_batch):
     for batch in range(n_batch):
         with Timer('Batch {0}/{1}   '.format(batch + 1, n_batch)):
             end = min(n_sample, (batch + 1) * batch_size)
             start = end - batch_size
-            xshape = X_data.shape
+            # feed_dict = {
+            #     env.x_fixed: X_data[start:end],
+            #     env.adv_eps: eps,
+            #     # env.adv_y: np.random.choice(n_classes)
+            #     env.adv_y: 5
+            # }
+
+            # env.sess.run(env.noise.initializer)
+            xshape = X_data[start:end].shape
             noise_initializer = tf.zeros_initializer()
             noise = tf.Variable(noise_initializer(xshape, dtype=tf.float32), dtype=tf.float32, name='noise', trainable=True)
 
             for epoch in range(epochs):
                 # env.sess.run(env.adv_train_op, feed_dict=feed_dict)
-                adv_train_op, xadv, noise = cw(model, noise, tf.convert_to_tensor(X_data[start:end]), y=5, eps=eps)
+                adv_train_op, xadv, noise = cw(model, noise, tf.convert_to_tensor(X_data[start:end]), eps=eps)
             # env.adv_train_op, env.xadv, env.noise = cw(model, env.x_fixed, ord_='inf',y=env.adv_y, eps=env.adv_eps, optimizer=optimizer)
 
             # xadv = env.sess.run(env.xadv, feed_dict=feed_dict)
-            train_op, xadv, noise = cw(model, noise, tf.convert_to_tensor(X_data[start:end]), y=5, eps=eps, ord_='inf')
+            train_op, xadv, noise = cw(model, noise, tf.convert_to_tensor(X_data[start:end]), eps=eps, ord_='inf')
             X_adv[start:end] = xadv
+            Noise[start:end] = noise
 
     return X_adv
-
 
 # the path to the saved model
 model = tf.keras.models.load_model("./model", compile=False)
