@@ -15,9 +15,10 @@ from keras import backend as K
 # def inv_softmax(x, C):
 #    return tf.math.log(x) + C
 
-def cw(model, noise, x, y=None, eps=1.0, ord_=2, T=2,
+
+def cw(model, noise, x, y=None, tau=None, eps=1.0, ord_=2, T=2,
        optimizer=Adam(learning_rate=0.1), alpha=0.9,
-       min_prob=0, clip=(0.0, 1.0)):
+       min_prob=0.5, clip=(0.0, 1.0)):
     """CarliniWagner (CW) attack.
     Only CW-L2 and CW-Linf are implemented since I do not see the point of
     embedding CW-L2 in CW-L1.  See https://arxiv.org/abs/1608.04644 for
@@ -59,10 +60,11 @@ def cw(model, noise, x, y=None, eps=1.0, ord_=2, T=2,
              input space.  It is returned because we need to clear noise
              before each batched attacks.
     """
-    global x_train_new, y_train_new, label
     xshape = x.get_shape().as_list()
-    # noise = tf.compat.v1.get_variable('noise', xshape, tf.float32,
-    #                                   initializer=tf.compat.v1.initializers.zeros)
+    axis = list(range(1, len(xshape)))
+    ord_ = float(ord_)
+    # print('tau before-', tau)
+    print('Noise begin -',noise)
 
     # scale input to (0, 1)
     x_scaled = (x - clip[0]) / (clip[1] - clip[0])
@@ -75,15 +77,17 @@ def cw(model, noise, x, y=None, eps=1.0, ord_=2, T=2,
 
         # add noise in sigmoid-space and map back to input domain
         xadv = tf.sigmoid(T * (xinv + noise))  # 1
-        xadv = xadv * (clip[1] - clip[0]) + clip[0] # 2
+        xadv = xadv * (clip[1] - clip[0]) + clip[0]  # 2
 
         get_logit_layer_output = K.function(
             [model.layers[0].input],  # param 1 will be treated as layer[0].output
             [model.get_layer('dense').output])  # and this function will return output from flatten layer
 
         # ybar, logits = model(xadv, logits=True)
-        ybar = model(xadv)
         logits = get_logit_layer_output(xadv)[0]
+        # print(logits)
+        ybar = model(xadv)
+        # print(ybar)
         ydim = ybar.shape[1]
 
         if y is not None:
@@ -94,15 +98,14 @@ def cw(model, noise, x, y=None, eps=1.0, ord_=2, T=2,
             # we set target to the least-likely label
             y = tf.argmin(input=ybar, axis=1, output_type=tf.int32)
 
+        # print('y -', y)
+
         mask = tf.one_hot(y, ydim, on_value=0.0, off_value=float('inf'))
         yt = tf.reduce_max(input_tensor=logits - mask, axis=1)
         yo = tf.reduce_max(input_tensor=logits, axis=1)
 
         # encourage to classify to a wrong category
         loss0 = tf.nn.relu(yo - yt + min_prob)
-
-        axis = list(range(1, len(xshape)))
-        ord_ = float(ord_)
 
         # make sure the adversarial images are visually close
         if 2 == ord_:
@@ -113,28 +116,31 @@ def cw(model, noise, x, y=None, eps=1.0, ord_=2, T=2,
             loss1 = tf.reduce_mean(input_tensor=tf.square(xadv - x))
         else:
             # CW-Linf
-            tau0 = tf.fill([xshape[0]] + [1] * len(axis), clip[1])
-            # tau = tf.compat.v1.get_variable('cw8-noise-upperbound', dtype=tf.float32,
-            #                                 initializer=tau0, trainable=False)
-            tau = tf.Variable(tau0, trainable=False, dtype=tf.float32, name='cw8-noise-upperbound')
 
             diff = xadv - x - tau
 
             # if all values are smaller than the upper bound value tau, we reduce
             # this value via tau*0.9 to make sure L-inf does not get stuck.
-            tau = alpha * tf.cast(tf.reduce_all(input_tensor=diff < 0, axis=axis), dtype=tf.float32)
             loss1 = tf.nn.relu(tf.reduce_sum(input_tensor=diff, axis=axis))
 
         loss = eps * loss0 + loss1
 
+    print('Noise before opt', tf.reduce_sum(abs(noise)))
     train_op = optimizer.minimize(loss, var_list=[noise], tape=tape)
+    print('Noise after opt', tf.reduce_sum(abs(noise)))
 
     # We may need to update tau after each iteration.  Refer to the CW-Linf
     # section in the original paper.
     if 2 != ord_:
-        train_op = tf.group(train_op, tau)
+        # add noise in sigmoid-space and map back to input domain
+        xadv = tf.sigmoid(T * (xinv + noise))  # 1
+        xadv = xadv * (clip[1] - clip[0]) + clip[0]  # 2
+        diff = xadv - x - tau
+        tau = alpha * tf.cast(tf.reduce_all(input_tensor=diff < 0, axis=axis), dtype=tf.float32)
 
-    return train_op, xadv, noise
+    # print('tau after-', tau)
+    print('noise end -', noise)
+    return train_op, xadv, noise, tau
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -203,7 +209,7 @@ def img_plot(images, epsilon, labels):
     plt.show()
 
 
-def make_cw(model, X_data, epochs=1, eps=0.1, batch_size=batch_size):
+def make_cw(model, X_data, epochs=1, eps=1, batch_size=batch_size):
     """
     Generate adversarial via CW optimization.
     """
@@ -219,28 +225,33 @@ def make_cw(model, X_data, epochs=1, eps=0.1, batch_size=batch_size):
         with Timer('Batch {0}/{1}   '.format(batch + 1, n_batch)):
             end = min(n_sample, (batch + 1) * batch_size)
             start = end - batch_size
-            # feed_dict = {
-            #     env.x_fixed: X_data[start:end],
-            #     env.adv_eps: eps,
-            #     # env.adv_y: np.random.choice(n_classes)
-            #     env.adv_y: 5
-            # }
 
-            # env.sess.run(env.noise.initializer)
             xshape = X_data[start:end].shape
-            noise_initializer = tf.zeros_initializer()
-            noise = tf.Variable(noise_initializer(xshape, dtype=tf.float32), dtype=tf.float32, name='noise', trainable=True)
+            axis = list(range(1, len(xshape)))
+            clip = (0.0, 1.0)
+            tau0 = tf.fill([xshape[0]] + [1] * len(axis), clip[1])
 
+            tau = tf.Variable(tau0, trainable=False, dtype=tf.float32, name='cw8-noise-upperbound')
+            noise = tf.Variable(tf.zeros(xshape, dtype=tf.float32), dtype=tf.float32, name='noise', trainable=True)
+            x = tf.convert_to_tensor(X_data[start:end])
+            print('tau before 1-',tau)
             for epoch in range(epochs):
                 # env.sess.run(env.adv_train_op, feed_dict=feed_dict)
-                adv_train_op, xadv, noise = cw(model, noise, tf.convert_to_tensor(X_data[start:end]), eps=eps)
-            # env.adv_train_op, env.xadv, env.noise = cw(model, env.x_fixed, ord_='inf',y=env.adv_y, eps=env.adv_eps, optimizer=optimizer)
+                adv_train_op, xadv, noise, tau = cw(model, noise, x,
+                                                    y=5, tau=tau, eps=eps, ord_=2, clip=clip)
 
             # xadv = env.sess.run(env.xadv, feed_dict=feed_dict)
-            train_op, xadv, noise = cw(model, noise, tf.convert_to_tensor(X_data[start:end]), eps=eps, ord_='inf')
+            adv_train_op, xadv, noise, tau = cw(model, noise, x,
+                                                y=5, tau=tau, eps=eps, ord_=2)
+
+            print('tau after-', tau)
+            # print('Diff - ', tf.reduce_sum(xadv-X_data))
             X_adv[start:end] = xadv
             Noise[start:end] = noise
 
+    # print('Data - ', X_data)
+    # print('Adv - ',X_adv)
+    print('Noise-', Noise)
     return X_adv
 
 # the path to the saved model
@@ -265,20 +276,23 @@ y_train = to_categorical(y_train, num_category)
 y_test = to_categorical(y_test, num_category)
 
 # Get image and its label
-image = x_test 
-label = y_test 
+image = x_test[:5]
+label = y_test[:5]
 
-epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
+epsilons = [0.0, 0.007, 0.03, 0.05, 0.3, 1, 3, 5]
 
 for i, eps in enumerate(epsilons):
   print('\nGenerating adversarial data')
   # X_adv = make_cw(sess, env, X_test, epochs=30, eps=3)
-  X_adv = make_cw(model, image, epochs=0, eps=eps)
+  X_adv = make_cw(model, image, epochs=100, eps=eps)
+  print("Diff val abs -", tf.reduce_sum(abs(X_adv)-abs(image)))
+  print(model.predict(X_adv))
 
   print('\nEvaluating on adversarial data')
   pred = np.argmax(model.predict(X_adv), axis=1)
-  label = np.argmax(y_test , axis=1)
-  test_acc = accuracy_score(pred, label)
+  label = np.argmax(y_test, axis=1)
+  print(pred)
+  test_acc = accuracy_score(pred, label[:5])
 
   print("Prediction on adversarial data (eps = " + str(eps)+")= ", test_acc * 100)
   img_plot(X_adv[:10], eps, pred)

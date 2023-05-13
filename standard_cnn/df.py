@@ -340,7 +340,7 @@ epsilons = [0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3]
 for i, eps in enumerate(epsilons):
     print('\nGenerating adversarial data')
     # X_adv = make_cw(sess, env, X_test, epochs=30, eps=3)
-    X_adv = make_deepfool(model, image, epochs=3, eps=eps)
+    X_adv = make_deepfool(model, image, epochs=3, eta=eps)
 
     print('\nEvaluating on adversarial data')
     pred = np.argmax(model.predict(X_adv), axis=1)
