@@ -15,10 +15,13 @@ from svm import svm_classify
 from scipy.special import softmax
 from models import get_flatten_layer_output, get_logit_layer_output
 
+def inv_softmax(x, C):
+   return tf.math.log(x) + C
+
 
 def cw(model, noise, x, y=None, tau=None, eps=1.0, ord_=2, T=2,
        optimizer=Adam(learning_rate=0.1), alpha=0.9,
-       min_prob=0.5, clip=(0.0, 1.0)):
+       min_prob=0, clip=(0.0, 1.0)):
     """CarliniWagner (CW) attack.
     Only CW-L2 and CW-Linf are implemented since I do not see the point of
     embedding CW-L2 in CW-L1.  See https://arxiv.org/abs/1608.04644 for
@@ -64,7 +67,7 @@ def cw(model, noise, x, y=None, tau=None, eps=1.0, ord_=2, T=2,
     axis = list(range(1, len(xshape)))
     ord_ = float(ord_)
     # print('tau before-', tau)
-    print('Noise begin -',noise)
+    # print('Noise begin -',noise)
 
     # scale input to (0, 1)
     x_scaled = (x - clip[0]) / (clip[1] - clip[0])
@@ -80,9 +83,9 @@ def cw(model, noise, x, y=None, tau=None, eps=1.0, ord_=2, T=2,
         xadv = xadv * (clip[1] - clip[0]) + clip[0]  # 2
 
         # ybar, logits = model(xadv, logits=True)
-        logits = tf.convert_to_tensor(get_logit_layer_output(model, xadv), dtype=tf.float32)
-        # print(logits)
         ybar = model(xadv)
+        logits = inv_softmax(ybar, tf.math.log(10.))
+
         # print(ybar)
         ydim = ybar.shape[1]
 
@@ -121,21 +124,20 @@ def cw(model, noise, x, y=None, tau=None, eps=1.0, ord_=2, T=2,
 
         loss = eps * loss0 + loss1
 
-    print('Noise before opt', tf.reduce_sum(abs(noise)))
+    # print('Noise before opt', tf.reduce_sum(abs(noise)))
     train_op = optimizer.minimize(loss, var_list=[noise], tape=tape)
-    print('Noise after opt', tf.reduce_sum(abs(noise)))
+    # print('Noise after opt', tf.reduce_sum(abs(noise)))
 
     # We may need to update tau after each iteration.  Refer to the CW-Linf
     # section in the original paper.
     if 2 != ord_:
         # add noise in sigmoid-space and map back to input domain
-        xadv = tf.sigmoid(T * (xinv + noise))  # 1
-        xadv = xadv * (clip[1] - clip[0]) + clip[0]  # 2
-        diff = xadv - x - tau
+        xadv1 = tf.sigmoid(T * (xinv + noise))  # 1
+        xadv1 = xadv1 * (clip[1] - clip[0]) + clip[0]  # 2
+        diff = xadv1 - x - tau
         tau = alpha * tf.cast(tf.reduce_all(input_tensor=diff < 0, axis=axis), dtype=tf.float32)
 
     # print('tau after-', tau)
-    print('noise end -', noise)
     return train_op, xadv, noise, tau
 
 
@@ -230,7 +232,6 @@ def make_cw(model, X_data, epochs=1, eps=1, batch_size=batch_size):
             tau = tf.Variable(tau0, trainable=False, dtype=tf.float32, name='cw8-noise-upperbound')
             noise = tf.Variable(tf.zeros(xshape, dtype=tf.float32), dtype=tf.float32, name='noise', trainable=True)
             x = tf.convert_to_tensor(X_data[start:end])
-            print('tau before 1-',tau)
             for epoch in range(epochs):
                 # env.sess.run(env.adv_train_op, feed_dict=feed_dict)
                 adv_train_op, xadv, noise, tau = cw(model, noise, x,
@@ -240,14 +241,10 @@ def make_cw(model, X_data, epochs=1, eps=1, batch_size=batch_size):
             adv_train_op, xadv, noise, tau = cw(model, noise, x,
                                                 y=5, tau=tau, eps=eps, ord_=2)
 
-            print('tau after-', tau)
             # print('Diff - ', tf.reduce_sum(xadv-X_data))
             X_adv[start:end] = xadv
             Noise[start:end] = noise
 
-    # print('Data - ', X_data)
-    # print('Adv - ',X_adv)
-    print('Noise-', Noise)
     return X_adv
 
 
@@ -282,10 +279,10 @@ x_test = x_test.astype('float32') / 255
 # set number of categories
 num_category = 10
 
-image = x_test[:10]
-label = y_test[:10]
+image = x_test
+label = y_test
 
-epsilons = [0.5, 1, 3, 5]
+epsilons = [0.0, 0.007, 0.01, 0.02, 0.03, 0.05, 0.1, 0.2, 0.3, 1, 3]
 
 print('\nEvaluating on original data')
 [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, x_test_new, y_test_new)
@@ -294,15 +291,11 @@ print("Prediction on original data= ", test_acc * 100)
 for i, eps in enumerate(epsilons):
     print('\nGenerating adversarial data')
     X_adv = make_cw(model, image, epochs=100, eps=eps)
-    print("Diff val abs -", tf.reduce_sum(abs(X_adv) - abs(image)))
 
     print('\nEvaluating on adversarial data')
     X_adv_new = get_flatten_layer_output(model, X_adv)
 
     [train_acc, test_acc, pred] = svm_classify(x_train_new, y_train_new, X_adv_new, label)
-
-    X_preds = np.argmax(model.predict(X_adv), axis=1)
-    print(X_preds)
 
     print("Prediction on adversarial data (eps = " + str(eps) + ")= ", test_acc * 100)
     img_plot(X_adv[:10], eps, pred)
