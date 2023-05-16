@@ -1,3 +1,9 @@
+"""
+    Code for training a creating and training a standard CNN model with CCE loss using TensorflowV2
+    Author: Shamoyeeta Saha
+    Created: 15-03-2023
+"""
+
 import pickle
 import gzip
 import numpy as np

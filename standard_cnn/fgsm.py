@@ -1,3 +1,9 @@
+""""
+    Code for implementing FGSM attack on model using TensorflowV2
+    Author: Shangeet Sankar
+    Created: 06-04-2023
+"""
+
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from keras.losses import CategoricalCrossentropy

@@ -1,3 +1,9 @@
+"""
+    Code for implementing Carlini and Wagner's attack on model using TensorflowV2
+    Author: Shamoyeeta Saha
+    Created: 23-04-2023
+"""
+
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from keras.losses import CategoricalCrossentropy

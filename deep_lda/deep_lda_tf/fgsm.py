@@ -1,3 +1,9 @@
+""""
+    Code for implementing FGSM attack on DeepLDA model using TensorflowV2
+    Author: Shangeet Sankar
+    Created: 25-03-2023
+"""
+
 import tensorflow as tf
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -57,8 +63,6 @@ x_train = x_train.astype('float32') / 255
 x_test = x_test.astype('float32') / 255
 
 # Get image and its label
-# sample = random.sample(range(0, 10000), 10)
-# sample = 1  # random.randint(0, 1000)
 image = x_test
 label = y_test
 

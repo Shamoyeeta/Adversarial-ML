@@ -1,3 +1,9 @@
+"""
+    Code for implementing DeepFool attack on DeepLDA model using TensorflowV2
+    Author: Sarah Khan
+    Created: 21-04-2023
+"""
+
 import tensorflow as tf
 import pickle
 import gzip
@@ -11,9 +17,7 @@ from objectives import lda_loss
 from models import get_flatten_layer_output, get_logit_layer_output
 from keras.datasets import mnist
 from keras.optimizers import Adam
-from keras import backend as K
 from svm import svm_classify
-from keras.utils import to_categorical
 import time
 
 maxTime = 0
@@ -58,8 +62,6 @@ def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
                    clip_max=clip_max, min_prob=min_prob)
             return z[0]
 
-        # delta = tf.map_fn(_f, x, dtype=(tf.float32), back_prop=False,
-        #                   name='deepfool')
         delta = tf.nest.map_structure(tf.stop_gradient, tf.map_fn(_f, x, dtype=(tf.float32), name='deepfool'))
 
     if noise:
@@ -67,7 +69,6 @@ def deepfool(model, x, noise=False, eta=0.02, epochs=3, batch=False,
         return delta
 
     xadv = tf.stop_gradient(x + delta * (1 + eta))
-    # print('In function - ', xadv)
     xadv = tf.clip_by_value(xadv, clip_min, clip_max)
     return xadv
 
@@ -101,8 +102,6 @@ def _deepfool2(model, x, epochs, eta, clip_min, clip_max, min_prob):
         dx = - y * g / (tf.norm(tensor=g) + 1e-10)  # off by a factor of 1/norm(g)
         return i + 1, z + dx
 
-    # _, noise = tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
-    #                          name='_deepfool2', back_prop=False)
     _, noise = tf.nest.map_structure(tf.stop_gradient,
                                      tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
                                                    name='_deepfool2'))
@@ -129,8 +128,6 @@ def _deepfool2_batch(model, x, epochs, eta, clip_min, clip_max):
         dx = g * d
         return i + 1, z + dx
 
-    # _, noise = tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
-    #                          name='_deepfool2_batch', back_prop=False)
     _, noise = tf.nest.map_structure(tf.stop_gradient,
                                      tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
                                                    name='_deepfool2_batch'))
@@ -191,8 +188,6 @@ def _deepfoolx(model, x, epochs, eta, clip_min, clip_max, min_prob):
         dx = tf.reshape(dx, [-1] + xdim)
         return i + 1, z + dx
 
-    # _, noise = tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
-    #                          name='_deepfoolx', back_prop=False)
     _, noise = tf.nest.map_structure(tf.stop_gradient,
                                      tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
                                                    name='_deepfoolx'))
@@ -228,7 +223,6 @@ def _deepfoolx_batch(model, x, epochs, eta, clip_min, clip_max):
 
         del tape
 
-        # h = tf.GradientTape(ys=y[:, i], xs=xadv)[0]
         gs = [h for i in range(ydim)]
         g = tf.stack(gs, axis=0)
         g = tf.transpose(a=g, perm=perm)
@@ -251,8 +245,6 @@ def _deepfoolx_batch(model, x, epochs, eta, clip_min, clip_max):
         dx = si * bi
         return i + 1, z + dx
 
-    # _, noise = tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
-    #                          name='_deepfoolx_batch', back_prop=False)
     _, noise = tf.nest.map_structure(tf.stop_gradient,
                                      tf.while_loop(cond=_cond, body=_body, loop_vars=[0, tf.zeros_like(x)],
                                                    name='_deepfoolx_batch'))

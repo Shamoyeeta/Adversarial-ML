@@ -1,3 +1,9 @@
+"""
+    Code for implementing JSMA attack on model using TensorflowV2
+    Author: Vinoy Wilson
+    Created: 30-04-2023
+"""
+
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from keras.losses import CategoricalCrossentropy

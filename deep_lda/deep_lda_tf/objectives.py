@@ -1,7 +1,11 @@
+"""
+    Code for LDA loss function using TensorflowV2
+    Author: Shamoyeeta Saha
+    Created: 08-02-2023
+"""
+
 import tensorflow as tf
-from tensorflow.python.keras import losses
 from tensorflow.python.keras.layers import dot
-from tensorflow.python.keras.utils import losses_utils
 import numpy as np
 import keras
 import scipy.linalg as slinalg
@@ -9,68 +13,6 @@ import scipy.linalg as slinalg
 
 def numpy_unique(a):
     return np.unique(a)
-
-
-# def lda_loss(n_components, margin):
-#     """
-#     The main loss function (inner_lda_objective) is wrapped in this function due to
-#     the constraints imposed by Keras on objective functions
-#     """
-#     def inner_lda_objective(y_true, y_pred):
-#         """
-#         It is the loss function of LDA as introduced in the original paper.
-#         It is adopted from the the original implementation in the following link:
-#         https://github.com/CPJKU/deep_lda
-#         Note: it is implemented by Theano tensor operations, and does not work on Tensorflow backend
-#         """
-#         r = 1e-4
-#
-#         print(y_true)
-#         # init groups
-#         yt = T.cast(y_true.flatten(), "int32")
-#         groups = numpy_unique(yt)
-#
-#         def compute_cov(group, Xt, yt):
-#             Xgt = Xt[T.eq(yt, group).nonzero()[0], :]
-#             Xgt_bar = Xgt - T.mean(Xgt, axis=0)
-#             m = T.cast(Xgt_bar.shape[0], 'float32')
-#             return (1.0 / (m - 1)) * T.dot(Xgt_bar.T, Xgt_bar)
-#
-#         # scan over groups
-#         covs_t, updates = theano.scan(fn=compute_cov, outputs_info=None,
-#                                       sequences=[groups], non_sequences=[y_pred, yt])
-#
-#         # compute average covariance matrix (within scatter)
-#         Sw_t = T.mean(covs_t, axis=0)
-#
-#         # compute total scatter
-#         Xt_bar = y_pred - T.mean(y_pred, axis=0)
-#         m = T.cast(Xt_bar.shape[0], 'float32')
-#         St_t = (1.0 / (m - 1)) * T.dot(Xt_bar.T, Xt_bar)
-#
-#         # compute between scatter
-#         Sb_t = St_t - Sw_t
-#
-#         # cope for numerical instability (regularize)
-#         Sw_t += T.identity_like(Sw_t) * r
-#
-#         # return T.cast(T.neq(yt[0], -1), 'float32')*T.nlinalg.trace(T.dot(T.nlinalg.matrix_inverse(St_t), Sb_t))
-#
-#         # compute eigenvalues
-#         evals_t = T.slinalg.eigvalsh(Sb_t, Sw_t)
-#
-#         # get eigenvalues
-#         top_k_evals = evals_t[-n_components:]
-#
-#         # maximize variance between classes
-#         # (k smallest eigenvalues below threshold)
-#         thresh = T.min(top_k_evals) + margin
-#         top_k_evals = top_k_evals[(top_k_evals <= thresh).nonzero()]
-#         costs = T.mean(top_k_evals)
-#
-#         return -costs
-#
-#     return inner_lda_objective
 
 @tf.custom_gradient
 def eigvalsh(A, B):
@@ -158,20 +100,14 @@ def linear_discriminative_eigvals(y, X, lambda_val=1e-3, ret_vecs=False):
     """
     X = tf.convert_to_tensor(X, tf.float32)  # [N, d]
     y = tf.squeeze(tf.cast(tf.convert_to_tensor(y), tf.int32))  # [N]
-    # print(X.shape)
-    # print(y.shape)
     y.set_shape(X.shape[:-1])  # [N]
     classes = tf.sort(tf.raw_ops.UniqueV2(x=y, axis=[0]).y)
     num_classes = tf.shape(classes)[0]
 
     def compute_cov(args):
         i, Xcopy, ycopy = args
-        # print('i - ', i)
-        # print('Xcopy - ', Xcopy)
-        # print('ycopy - ', ycopy)
         # Hypothesis: equal number of samples (Ni) for each class
         Xg = Xcopy[ycopy == i]  # [None, d]
-        # print('Xg - ', Xg)
         Xg_bar = Xg - tf.reduce_mean(Xg, axis=0, keepdims=True)  # [None, d]
         m = tf.cast(tf.shape(Xg_bar)[0], tf.float32)  # []
         Xg_bar_dummy_batch = tf.expand_dims(Xg_bar, axis=0)  # [1, None, d]
@@ -218,12 +154,7 @@ class lda_loss(keras.losses.Loss):
         super().__init__(name=name)
 
     def call(self, y_true, y_pred):
-        # print("In linear_discriminative_loss()")
-        # print('y_true ', y_true)
-        # print('y_pred ', y_pred)
         eigvals = linear_discriminative_eigvals(y_true, y_pred)  # [cls]
-
-        # print("Eigvals- ", eigvals)
 
         # At most cls - 1 non-zero eigenvalues
         classes = tf.raw_ops.UniqueV2(x=y_true, axis=[0]).y  # [cls]
@@ -235,5 +166,4 @@ class lda_loss(keras.losses.Loss):
         top_k_eigvals = eigvals[eigvals <= thresh]  # [None]
         costs = -tf.reduce_mean(top_k_eigvals)  # []
 
-        # print("Costs- ", costs)
         return costs

@@ -1,3 +1,8 @@
+"""
+    Code for implementing DeepFool attack on model using TensorflowV2
+    Author: Sarah Khan
+    Created: 09-05-2023
+"""
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from keras.losses import CategoricalCrossentropy

@@ -1,3 +1,9 @@
+"""
+    Code for implementing DeepLDA model using TensorflowV2
+    Author: Shamoyeeta Saha
+    Created: 27-01-2023
+"""
+
 import pickle
 import gzip
 import numpy as np

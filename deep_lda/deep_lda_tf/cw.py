@@ -1,7 +1,12 @@
+"""
+    Code for implementing Carlini and Wagner's attack on DeepLDA model using TensorflowV2
+    Author: Shamoyeeta Saha
+    Created: 03-04-2023
+"""
+
 import os
 from timeit import default_timer
 import numpy as np
-import matplotlib.gridspec as gridspec
 import tensorflow as tf
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -12,8 +17,7 @@ from keras.optimizers import Adam
 
 from objectives import lda_loss
 from svm import svm_classify
-from scipy.special import softmax
-from models import get_flatten_layer_output, get_logit_layer_output
+from models import get_flatten_layer_output
 
 def inv_softmax(x, C):
    return tf.math.log(x) + C
@@ -23,9 +27,7 @@ def cw(model, noise, x, y=None, tau=None, eps=1.0, ord_=2, T=2,
        optimizer=Adam(learning_rate=0.1), alpha=0.9,
        min_prob=0, clip=(0.0, 1.0)):
     """CarliniWagner (CW) attack.
-    Only CW-L2 and CW-Linf are implemented since I do not see the point of
-    embedding CW-L2 in CW-L1.  See https://arxiv.org/abs/1608.04644 for
-    details.
+    Only CW-L2 and CW-Linf are implemented
     The idea of CW attack is to minimize a loss that comprises two parts: a)
     the p-norm distance between the original image and the adversarial image,
     and b) a term that encourages the incorrect classification of the
@@ -66,8 +68,6 @@ def cw(model, noise, x, y=None, tau=None, eps=1.0, ord_=2, T=2,
     xshape = x.get_shape().as_list()
     axis = list(range(1, len(xshape)))
     ord_ = float(ord_)
-    # print('tau before-', tau)
-    # print('Noise begin -',noise)
 
     # scale input to (0, 1)
     x_scaled = (x - clip[0]) / (clip[1] - clip[0])
@@ -82,11 +82,9 @@ def cw(model, noise, x, y=None, tau=None, eps=1.0, ord_=2, T=2,
         xadv = tf.sigmoid(T * (xinv + noise))  # 1
         xadv = xadv * (clip[1] - clip[0]) + clip[0]  # 2
 
-        # ybar, logits = model(xadv, logits=True)
         ybar = model(xadv)
         logits = inv_softmax(ybar, tf.math.log(10.))
 
-        # print(ybar)
         ydim = ybar.shape[1]
 
         if y is not None:
@@ -124,9 +122,7 @@ def cw(model, noise, x, y=None, tau=None, eps=1.0, ord_=2, T=2,
 
         loss = eps * loss0 + loss1
 
-    # print('Noise before opt', tf.reduce_sum(abs(noise)))
     train_op = optimizer.minimize(loss, var_list=[noise], tape=tape)
-    # print('Noise after opt', tf.reduce_sum(abs(noise)))
 
     # We may need to update tau after each iteration.  Refer to the CW-Linf
     # section in the original paper.
@@ -137,7 +133,6 @@ def cw(model, noise, x, y=None, tau=None, eps=1.0, ord_=2, T=2,
         diff = xadv1 - x - tau
         tau = alpha * tf.cast(tf.reduce_all(input_tensor=diff < 0, axis=axis), dtype=tf.float32)
 
-    # print('tau after-', tau)
     return train_op, xadv, noise, tau
 
 
@@ -233,15 +228,12 @@ def make_cw(model, X_data, epochs=1, eps=1, batch_size=batch_size):
             noise = tf.Variable(tf.zeros(xshape, dtype=tf.float32), dtype=tf.float32, name='noise', trainable=True)
             x = tf.convert_to_tensor(X_data[start:end])
             for epoch in range(epochs):
-                # env.sess.run(env.adv_train_op, feed_dict=feed_dict)
                 adv_train_op, xadv, noise, tau = cw(model, noise, x,
                                                     y=5, tau=tau, eps=eps, ord_=2, clip=clip)
 
-            # xadv = env.sess.run(env.xadv, feed_dict=feed_dict)
             adv_train_op, xadv, noise, tau = cw(model, noise, x,
                                                 y=5, tau=tau, eps=eps, ord_=2)
 
-            # print('Diff - ', tf.reduce_sum(xadv-X_data))
             X_adv[start:end] = xadv
             Noise[start:end] = noise
 
